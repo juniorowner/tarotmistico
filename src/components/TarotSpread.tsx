@@ -47,7 +47,22 @@ const TarotSpread = () => {
     setSelectedCard(null);
   };
 
+  const navigate = useNavigate();
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
+
+  const saveReading = () => {
+    if (!selectedSpread) return;
+    saveDiaryEntry({
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      spreadName: selectedSpread.name,
+      spreadEmoji: selectedSpread.emoji,
+      labels: selectedSpread.labels,
+      cards,
+      note: "",
+    });
+    toast.success("Leitura salva no diário! ✨");
+  };
 
   const getGridClass = () => {
     if (!selectedSpread) return "";
