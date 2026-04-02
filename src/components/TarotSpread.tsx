@@ -174,6 +174,17 @@ const TarotSpread = () => {
                   animate={{ opacity: 1 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={saveReading}
+                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Salvar no Diário
+                </motion.button>
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={startReading}
                   className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-all"
                 >

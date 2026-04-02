@@ -1,9 +1,21 @@
+import { Link } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 import Hero from "@/components/Hero";
 import TarotSpread from "@/components/TarotSpread";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      {/* Diary link */}
+      <div className="fixed top-4 right-4 z-50">
+        <Link
+          to="/diario"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card/80 backdrop-blur border border-border hover:border-primary/40 text-primary transition-all font-display text-xs tracking-wider uppercase"
+        >
+          <BookOpen className="w-4 h-4" />
+          Diário
+        </Link>
+      </div>
       <Hero />
       <div id="leitura">
         <TarotSpread />
