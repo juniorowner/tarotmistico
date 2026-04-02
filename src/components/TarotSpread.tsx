@@ -1,9 +1,13 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { majorArcana, TarotCard } from "@/data/tarotCards";
 import { SpreadType } from "@/data/spreadTypes";
+import { saveDiaryEntry } from "@/lib/diary";
+import { BookOpen, Save } from "lucide-react";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
+import { toast } from "sonner";
 
 const getRandomCards = (count: number): TarotCard[] => {
   const shuffled = [...majorArcana].sort(() => Math.random() - 0.5);
@@ -43,7 +47,22 @@ const TarotSpread = () => {
     setSelectedCard(null);
   };
 
+  const navigate = useNavigate();
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
+
+  const saveReading = () => {
+    if (!selectedSpread) return;
+    saveDiaryEntry({
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      spreadName: selectedSpread.name,
+      spreadEmoji: selectedSpread.emoji,
+      labels: selectedSpread.labels,
+      cards,
+      note: "",
+    });
+    toast.success("Leitura salva no diário! ✨");
+  };
 
   const getGridClass = () => {
     if (!selectedSpread) return "";
@@ -150,6 +169,17 @@ const TarotSpread = () => {
 
             {allRevealed && (
               <div className="flex flex-wrap justify-center gap-4">
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={saveReading}
+                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Salvar no Diário
+                </motion.button>
                 <motion.button
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
