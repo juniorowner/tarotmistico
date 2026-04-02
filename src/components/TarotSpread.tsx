@@ -1,9 +1,13 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { majorArcana, TarotCard } from "@/data/tarotCards";
 import { SpreadType } from "@/data/spreadTypes";
+import { saveDiaryEntry } from "@/lib/diary";
+import { BookOpen, Save } from "lucide-react";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
+import { toast } from "sonner";
 
 const getRandomCards = (count: number): TarotCard[] => {
   const shuffled = [...majorArcana].sort(() => Math.random() - 0.5);
