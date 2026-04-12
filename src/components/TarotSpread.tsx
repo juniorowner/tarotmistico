@@ -7,6 +7,7 @@ import { saveDiaryEntry } from "@/lib/diary";
 import { BookOpen, Save } from "lucide-react";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
+import AIInterpretation from "./AIInterpretation";
 import { toast } from "sonner";
 
 const getRandomCards = (count: number): TarotCard[] => {
@@ -167,8 +168,16 @@ const TarotSpread = () => {
               )}
             </AnimatePresence>
 
+            {allRevealed && selectedSpread && (
+              <AIInterpretation
+                spreadName={selectedSpread.name}
+                labels={selectedSpread.labels}
+                cards={cards}
+              />
+            )}
+
             {allRevealed && (
-              <div className="flex flex-wrap justify-center gap-4">
+              <div className="flex flex-wrap justify-center gap-4 mt-8">
                 <motion.button
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
