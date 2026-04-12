@@ -54,7 +54,7 @@ Instruções:
 7. Responda em no máximo 800 palavras`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,7 +90,7 @@ Instruções:
       data?.candidates?.[0]?.content?.parts?.[0]?.text || "Não foi possível gerar a interpretação.";
 
     return new Response(
-      JSON.stringify({ interpretation, model: "gemini-1.5-pro" }),
+      JSON.stringify({ interpretation, model: "gemini-2.0-flash" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
