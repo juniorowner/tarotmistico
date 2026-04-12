@@ -28,13 +28,16 @@ export async function requestAIInterpretation(
     }
   );
 
-  if (error) {
-    throw new Error(error.message || "Erro ao conectar com a IA");
+  // supabase-js may put the parsed body in either `data` or `error` for non-2xx
+  const body = result || (error as any);
+
+  if (body?.error) {
+    throw new Error(body.error);
   }
 
-  if (result?.error) {
-    throw new Error(result.error);
+  if (error && !body?.interpretation) {
+    throw new Error("Erro ao conectar com a IA. Tente novamente em alguns minutos.");
   }
 
-  return result as InterpretationResponse;
+  return body as InterpretationResponse;
 }
