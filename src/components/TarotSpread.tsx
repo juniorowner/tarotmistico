@@ -29,6 +29,26 @@ import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
 import { toast } from "sonner";
 
+const FIRST_GUEST_READING_KEY = "tarot:first-guest-reading-completed:v1";
+
+function hasCompletedFirstGuestReading(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(FIRST_GUEST_READING_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markFirstGuestReadingCompleted() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FIRST_GUEST_READING_KEY, "1");
+  } catch {
+    // Ignora falhas de storage (modo privado, bloqueios, etc.)
+  }
+}
+
 function suitLabelPt(suit: NonNullable<DealtTarotCard["suit"]>): string {
   const labels = { cups: "Copas", swords: "Espadas", pentacles: "Ouros", wands: "Paus" } as const;
   return labels[suit];
@@ -83,6 +103,7 @@ const TarotSpread = () => {
   const [consultUsedCredit, setConsultUsedCredit] = useState<boolean | null>(null);
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
   const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
+  const [guestReadingAlreadyUsed, setGuestReadingAlreadyUsed] = useState(hasCompletedFirstGuestReading);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
   const quotaExhausted =
@@ -95,11 +116,13 @@ const TarotSpread = () => {
     if (!selectedSpread) return;
     if (authLoading) return;
     if (!user) {
-      trackEvent("auth_required_start_reading");
-      openAuthDialog(
-        "Inicie sessão para realizar uma leitura. As 3 consultas grátis por dia (UTC) e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
-      );
-      return;
+      if (guestReadingAlreadyUsed) {
+        trackEvent("auth_required_start_reading_after_guest");
+        openAuthDialog(
+          "Sua consulta grátis sem login já foi usada neste dispositivo. Entre ou crie conta para continuar com novas leituras."
+        );
+        return;
+      }
     }
     if (quotaExhausted) {
       trackEvent("reading_start_blocked_quota");
@@ -127,7 +150,7 @@ const TarotSpread = () => {
     setRevealed(new Array(n).fill(false));
     setHasStarted(true);
     setSelectedCard(null);
-  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted]);
+  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, guestReadingAlreadyUsed]);
 
   useEffect(() => {
     if (user && selectedSpread && !hasStarted) {
@@ -158,6 +181,17 @@ const TarotSpread = () => {
   };
 
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
+
+  useEffect(() => {
+    if (allRevealed && !user && !guestReadingAlreadyUsed) {
+      markFirstGuestReadingCompleted();
+      setGuestReadingAlreadyUsed(true);
+      trackEvent("guest_first_reading_completed");
+      toast.message("Consulta gratuita concluída.", {
+        description: "Para fazer novas leituras, entre ou crie conta.",
+      });
+    }
+  }, [allRevealed, user, guestReadingAlreadyUsed]);
 
   useEffect(() => {
     if (!allRevealed || !user || !selectedSpread || !readingDedupeKey || cards.length === 0) {
@@ -290,6 +324,21 @@ const TarotSpread = () => {
                   >
                     {`✦ Iniciar ${selectedSpread.name} ✦`}
                   </motion.button>
+                  {!user && guestReadingAlreadyUsed && (
+                    <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
+                      A consulta gratuita sem login neste dispositivo já foi usada.{" "}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openAuthDialog("Entre ou crie conta para continuar com novas leituras.")
+                        }
+                        className="text-primary underline underline-offset-2"
+                      >
+                        Entrar ou criar conta
+                      </button>
+                      .
+                    </p>
+                  )}
                   {user && quotaExhausted && (
                     <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
                       Sem consultas grátis hoje e sem créditos.{" "}
