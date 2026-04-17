@@ -93,7 +93,7 @@ const Diary = () => {
             type="button"
             onClick={() =>
               openAuthDialog(
-                "O diário fica associado à sua conta. Você tem 3 interpretações por IA grátis por dia; depois pode usar créditos."
+                "O diário fica associado à sua conta. Você tem 1 interpretação por IA grátis por dia; depois pode usar créditos."
               )
             }
             className="font-display tracking-wider uppercase"

@@ -45,15 +45,15 @@ export function UserMenu() {
       >
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span className="text-primary font-medium">{freeLeft ?? "—"}</span>
-        <span className="text-muted-foreground/80">/3 grátis hoje</span>
+        <span className="text-muted-foreground/80">/1 grátis hoje</span>
       </span>
       <span
         className="inline-flex items-center gap-1 text-xs text-muted-foreground font-body"
-        title="Créditos após as 3 consultas grátis do dia"
+        title="Créditos após a consulta grátis do dia"
       >
         <Sparkles className="h-3.5 w-3.5 text-primary sm:hidden" />
         <span className="text-primary font-medium">{credits ?? "—"}</span>
-        <span className="text-muted-foreground/80">cr.</span>
+        <span className="text-muted-foreground/80">créditos</span>
       </span>
       <span className="max-w-[120px] truncate text-xs text-muted-foreground font-body" title={user.email ?? ""}>
         {label}

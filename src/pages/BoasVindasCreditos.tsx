@@ -25,7 +25,7 @@ const BoasVindasCreditos = () => {
           </h1>
 
           <p className="mt-4 text-muted-foreground font-body text-base md:text-lg leading-relaxed">
-            Você já pode usar seus benefícios: <strong className="text-foreground">{aiQuota?.free_remaining_today ?? 0}/3</strong>{" "}
+            Você já pode usar seus benefícios: <strong className="text-foreground">{aiQuota?.free_remaining_today ?? 0}/1</strong>{" "}
             consultas grátis hoje e <strong className="text-foreground">{credits ?? 0} créditos</strong> disponíveis.
           </p>
 

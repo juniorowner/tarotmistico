@@ -244,7 +244,7 @@ const TarotSpread = () => {
     if (!selectedSpread) return;
     if (!user) {
       openAuthDialog(
-        "Para guardar no diário, inicie sessão. As leituras ficam na sua conta. Você tem 3 interpretações por IA grátis por dia; depois pode usar créditos."
+        "Para guardar no diário, inicie sessão. As leituras ficam na sua conta. Você tem 1 interpretação por IA grátis por dia; depois pode usar créditos."
       );
       return;
     }

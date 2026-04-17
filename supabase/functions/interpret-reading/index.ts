@@ -4,7 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "./safetyContent.ts";
 
-const FREE_AI_PER_DAY = 3;
+const FREE_AI_PER_DAY = 1;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

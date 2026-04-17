@@ -43,7 +43,7 @@ const AIInterpretation = ({
     if (!user) {
       trackEvent("ai_interpretation_auth_required");
       openAuthDialog(
-        "Inicie sessão para ver a interpretação por IA. As 3 consultas grátis por dia e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+        "Inicie sessão para ver a interpretação por IA. A consulta grátis diária e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
       );
       return;
     }
@@ -94,7 +94,7 @@ const AIInterpretation = ({
       const e = err as Error & { code?: string; credits?: number; hint?: string };
       if (e.message === "AUTH_REQUIRED" || e.code === "AUTH_REQUIRED") {
         openAuthDialog(
-          "Inicie sessão para ver a interpretação por IA. As 3 consultas grátis por dia e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+          "Inicie sessão para ver a interpretação por IA. A consulta grátis diária e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
         );
         return;
       }
@@ -157,7 +157,7 @@ const AIInterpretation = ({
       {user && (
         <p className="text-xs text-center font-body mb-3 px-2 py-2 rounded-lg bg-primary/10 border border-primary/20 text-foreground/90">
           <Sparkles className="inline w-3.5 h-3.5 text-primary mr-1 align-text-bottom" />
-          <strong>{aiQuota?.free_remaining_today ?? 0}</strong> de 3 consultas grátis restantes hoje ·{" "}
+          <strong>{aiQuota?.free_remaining_today ?? 0}</strong> de 1 consulta grátis restante hoje ·{" "}
           <strong>{aiQuota?.credits_balance ?? 0}</strong> créditos comprados ·{" "}
           <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/80">
             COMPRAR CRÉDITOS
@@ -168,7 +168,7 @@ const AIInterpretation = ({
         Conta necessária. O baralho tem <strong className="text-foreground">78 cartas</strong>{" "}
         (Arcanos Maiores e Menores).{" "}
         Ao terminar a tiragem (todas as cartas reveladas), conta uma <strong className="text-foreground">consulta</strong>:{" "}
-        <strong className="text-foreground">3 grátis por dia</strong>, depois{" "}
+        <strong className="text-foreground">1 grátis por dia</strong>, depois{" "}
         <strong className="text-foreground">1 crédito por consulta</strong>. A interpretação por IA não cobra de novo.
       </p>
 
@@ -254,7 +254,7 @@ const AIInterpretation = ({
             {errorFooter === "quota" && (
               <div className="pl-7 space-y-2">
                 <p className="text-xs text-muted-foreground font-body">
-                  Compre com Mercado Pago (cartão, Pix, etc.) ou volte amanhã para usar as 3 consultas
+                  Compre com Mercado Pago (cartão, Pix, etc.) ou volte amanhã para usar a consulta
                   grátis outra vez.
                 </p>
                 <Link
@@ -268,7 +268,7 @@ const AIInterpretation = ({
             {errorFooter === "included" && (
               <p className="text-xs text-muted-foreground pl-7 font-body">
                 Lembrete: a sua conta inclui{" "}
-                <strong className="text-foreground/90">3 consultas por dia</strong> sem usar créditos (ao concluir a
+                <strong className="text-foreground/90">1 consulta por dia</strong> sem usar créditos (ao concluir a
                 tiragem). Depois desse limite, são necessários créditos ou pode esperar até o dia seguinte.
               </p>
             )}
