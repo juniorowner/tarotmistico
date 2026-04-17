@@ -11,6 +11,7 @@ import { AuthDialog } from "./components/AuthDialog";
 import Index from "./pages/Index";
 import Diary from "./pages/Diary";
 import Creditos from "./pages/Creditos";
+import RecuperarSenha from "./pages/RecuperarSenha";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/diario" element={<Diary />} />
                 <Route path="/creditos" element={<Creditos />} />
+                <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

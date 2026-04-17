@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 import { Loader2, Lock, Mail } from "lucide-react";
 
 /** Mensagens do Supabase Auth em português quando fizer sentido */
@@ -68,6 +69,7 @@ export function AuthDialog() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [forgotPassword, setForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
@@ -94,13 +96,37 @@ export function AuthDialog() {
     setInfoMessage("E-mail de confirmação reenviado. Verifique a caixa de entrada e o spam.");
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setInfoMessage(null);
+    setCanResendConfirmation(false);
+    const cleanEmail = sanitizeEmail(email);
+    if (!cleanEmail) return;
+
+    setLoading(true);
+    trackEvent("password_reset_requested");
+    const { error: err } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: `${origin}/recuperar-senha`,
+    });
+    setLoading(false);
+    if (err) {
+      setError(formatAuthError(err.message));
+      trackEvent("password_reset_email_failed", { reason: err.message });
+      return;
+    }
+    setInfoMessage(
+      "Se existir uma conta com este e-mail, enviámos instruções para redefinir a senha. Verifique a caixa de entrada e o spam."
+    );
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setInfoMessage(null);
     setCanResendConfirmation(false);
     const cleanEmail = sanitizeEmail(email);
-    if (!cleanEmail || !password) return;
+    if (!cleanEmail || (!forgotPassword && !password)) return;
 
     setLoading(true);
     const { data, error: err } = isSignUp
@@ -158,6 +184,7 @@ export function AuthDialog() {
           setEmail("");
           setPassword("");
           setIsSignUp(false);
+          setForgotPassword(false);
           setError(null);
           setInfoMessage(null);
           setCanResendConfirmation(false);
@@ -167,15 +194,17 @@ export function AuthDialog() {
       <DialogContent className="sm:max-w-md border-border bg-card">
         <DialogHeader>
           <DialogTitle className="font-display text-xl text-primary">
-            Entrar ou criar conta
+            {forgotPassword ? "Recuperar senha" : "Entrar ou criar conta"}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground font-body text-left">
-            {authDialogMessage ??
-              "Entre com e-mail e senha ou continue com Google para sincronizar o seu diário."}
+            {forgotPassword
+              ? "Indique o e-mail da conta. Enviaremos um link seguro para definir uma nova senha."
+              : authDialogMessage ??
+                "Entre com e-mail e senha ou continue com Google para sincronizar o seu diário."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleEmailAuth} className="space-y-4">
+        <form onSubmit={forgotPassword ? handleForgotPassword : handleEmailAuth} className="space-y-4">
           {infoMessage && (
             <p className="text-sm text-primary font-body" role="status">
               {infoMessage}
@@ -199,36 +228,38 @@ export function AuthDialog() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={isSignUp ? "outline" : "default"}
-              onClick={() => {
-                setIsSignUp(false);
-                setInfoMessage(null);
-                setCanResendConfirmation(false);
-                setError(null);
-              }}
-              disabled={loading}
-              className="font-display tracking-wider uppercase"
-            >
-              Entrar
-            </Button>
-            <Button
-              type="button"
-              variant={isSignUp ? "default" : "outline"}
-              onClick={() => {
-                setIsSignUp(true);
-                setInfoMessage(null);
-                setCanResendConfirmation(false);
-                setError(null);
-              }}
-              disabled={loading}
-              className="font-display tracking-wider uppercase"
-            >
-              Criar conta
-            </Button>
-          </div>
+          {!forgotPassword && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={isSignUp ? "outline" : "default"}
+                onClick={() => {
+                  setIsSignUp(false);
+                  setInfoMessage(null);
+                  setCanResendConfirmation(false);
+                  setError(null);
+                }}
+                disabled={loading}
+                className="font-display tracking-wider uppercase"
+              >
+                Entrar
+              </Button>
+              <Button
+                type="button"
+                variant={isSignUp ? "default" : "outline"}
+                onClick={() => {
+                  setIsSignUp(true);
+                  setInfoMessage(null);
+                  setCanResendConfirmation(false);
+                  setError(null);
+                }}
+                disabled={loading}
+                className="font-display tracking-wider uppercase"
+              >
+                Criar conta
+              </Button>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2">
             <label htmlFor="auth-email" className="text-xs font-display tracking-wider uppercase text-muted-foreground">
@@ -245,20 +276,40 @@ export function AuthDialog() {
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="auth-password" className="text-xs font-display tracking-wider uppercase text-muted-foreground">
-              Senha
-            </label>
-            <Input
-              id="auth-password"
-              type="password"
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-              placeholder="Digite sua senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-background"
-            />
-          </div>
+          {!forgotPassword && (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="auth-password" className="text-xs font-display tracking-wider uppercase text-muted-foreground">
+                Senha
+              </label>
+              <Input
+                id="auth-password"
+                type="password"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                placeholder="Digite sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+          )}
+
+          {!isSignUp && !forgotPassword && (
+            <div className="text-right">
+              <button
+                type="button"
+                className="text-xs font-body text-primary underline underline-offset-2 hover:text-primary/80 disabled:opacity-50"
+                onClick={() => {
+                  setForgotPassword(true);
+                  setError(null);
+                  setInfoMessage(null);
+                  setCanResendConfirmation(false);
+                }}
+                disabled={loading}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+          )}
 
           <Button
             type="submit"
@@ -266,30 +317,55 @@ export function AuthDialog() {
             className="w-full font-display tracking-wider uppercase gap-2"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-            {isSignUp ? "Criar conta com e-mail" : "Entrar com e-mail"}
+            {forgotPassword
+              ? "Enviar link por e-mail"
+              : isSignUp
+                ? "Criar conta com e-mail"
+                : "Entrar com e-mail"}
           </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
+          {forgotPassword && (
+            <div className="text-center">
+              <button
+                type="button"
+                className="text-sm font-body text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                onClick={() => {
+                  setForgotPassword(false);
+                  setError(null);
+                  setInfoMessage(null);
+                }}
+                disabled={loading}
+              >
+                Voltar ao login
+              </button>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground font-display tracking-widest">
-                ou
-              </span>
-            </div>
-          </div>
+          )}
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full font-display tracking-wider uppercase gap-2"
-            onClick={handleGoogle}
-            disabled={loading}
-          >
-            <Mail className="h-4 w-4" />
-            Continuar com Google
-          </Button>
+          {!forgotPassword && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground font-display tracking-widest">
+                    ou
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full font-display tracking-wider uppercase gap-2"
+                onClick={handleGoogle}
+                disabled={loading}
+              >
+                <Mail className="h-4 w-4" />
+                Continuar com Google
+              </Button>
+            </>
+          )}
         </form>
       </DialogContent>
     </Dialog>

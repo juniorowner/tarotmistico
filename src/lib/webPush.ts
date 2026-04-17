@@ -1,4 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { Preferences } from "@capacitor/preferences";
+
+const NATIVE_REMINDER_KEY = "daily_reminder_enabled";
+const NATIVE_REMINDER_NOTIFICATION_ID = 9001;
+
+function isNativeRuntime(): boolean {
+  return Capacitor.isNativePlatform();
+}
 
 function base64ToUint8Array(base64: string) {
   const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
@@ -10,6 +20,36 @@ function base64ToUint8Array(base64: string) {
 }
 
 export async function enableDailyPush(reminderHour = 9) {
+  if (isNativeRuntime()) {
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== "granted") {
+      throw new Error("Permissão de notificação não concedida no dispositivo.");
+    }
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: NATIVE_REMINDER_NOTIFICATION_ID,
+          title: "Tarot Místico",
+          body: "Sua leitura do dia está te esperando.",
+          schedule: {
+            on: {
+              hour: reminderHour,
+              minute: 0,
+            },
+            repeats: true,
+          },
+        },
+      ],
+    });
+
+    await Preferences.set({
+      key: NATIVE_REMINDER_KEY,
+      value: "1",
+    });
+    return;
+  }
+
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     throw new Error("Seu navegador não suporta notificações push.");
   }
@@ -61,6 +101,17 @@ export async function enableDailyPush(reminderHour = 9) {
 }
 
 export async function disableDailyPush() {
+  if (isNativeRuntime()) {
+    await LocalNotifications.cancel({
+      notifications: [{ id: NATIVE_REMINDER_NOTIFICATION_ID }],
+    });
+    await Preferences.set({
+      key: NATIVE_REMINDER_KEY,
+      value: "0",
+    });
+    return;
+  }
+
   if (!("serviceWorker" in navigator)) return;
   const registration = await navigator.serviceWorker.getRegistration("/sw.js");
   const subscription = await registration?.pushManager.getSubscription();
@@ -76,4 +127,13 @@ export async function disableDailyPush() {
       .update({ active: false, updated_at: new Date().toISOString() })
       .eq("endpoint", endpoint);
   }
+}
+
+export async function isDailyPushEnabled(): Promise<boolean> {
+  if (isNativeRuntime()) {
+    const { value } = await Preferences.get({ key: NATIVE_REMINDER_KEY });
+    return value === "1";
+  }
+  if (!("Notification" in window)) return false;
+  return Notification.permission === "granted";
 }

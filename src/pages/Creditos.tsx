@@ -12,7 +12,7 @@ import {
   getMercadoPagoPaymentStatus,
   processMercadoPagoPayment,
 } from "@/lib/payments";
-import { enableDailyPush, disableDailyPush } from "@/lib/webPush";
+import { enableDailyPush, disableDailyPush, isDailyPushEnabled } from "@/lib/webPush";
 import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -130,8 +130,14 @@ const Creditos = () => {
   }, [payStatus, setSearchParams, refreshAiQuota, refreshLedger]);
 
   useEffect(() => {
-    if (!("Notification" in window)) return;
-    setPushEnabled(Notification.permission === "granted");
+    let active = true;
+    void (async () => {
+      const enabled = await isDailyPushEnabled();
+      if (active) setPushEnabled(enabled);
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const refreshOrders = useCallback(async () => {
