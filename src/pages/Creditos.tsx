@@ -491,7 +491,7 @@ const Creditos = () => {
                           }`}
                         >
                           {row.credits_delta > 0 ? "+" : ""}
-                          {row.credits_delta} cr.
+                          {row.credits_delta} créditos
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
