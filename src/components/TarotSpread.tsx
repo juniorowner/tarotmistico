@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { allCards, type DealtTarotCard } from "@/data/tarotCards";
 import { drawReadingCards } from "@/lib/shuffleDeck";
@@ -72,6 +72,7 @@ function CardDetailBody({ card }: { card: DealtTarotCard }) {
 const dealSpread = (count: number): DealtTarotCard[] => drawReadingCards(allCards, count);
 
 const TarotSpread = () => {
+  const navigate = useNavigate();
   const { user, openAuthDialog, refreshAiQuota, isLoading: authLoading, aiQuota } = useAuth();
   const isNarrow = useIsNarrowViewport();
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
@@ -108,13 +109,8 @@ const TarotSpread = () => {
     }
     if (quotaExhausted) {
       trackEvent("reading_start_blocked_quota");
-      toast.error("Limite de consultas grátis de hoje atingido e sem créditos.", {
-        description: (
-          <Link to="/creditos" className="text-primary underline underline-offset-2 font-body">
-            Comprar créditos
-          </Link>
-        ),
-      });
+      toast.error("Sem consultas grátis hoje e sem créditos. Redirecionando para créditos…");
+      void navigate("/creditos");
       return;
     }
     const selected = dealSpread(selectedSpread.cardCount);
@@ -133,7 +129,7 @@ const TarotSpread = () => {
     setRevealed(new Array(n).fill(false));
     setHasStarted(true);
     setSelectedCard(null);
-  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, guestReadingAlreadyUsed]);
+  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, guestReadingAlreadyUsed, navigate]);
 
   useEffect(() => {
     if (user && selectedSpread && !hasStarted) {

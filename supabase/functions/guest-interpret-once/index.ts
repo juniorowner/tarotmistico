@@ -82,20 +82,6 @@ serve(async (req) => {
       );
     }
 
-    const { error: lockErr } = await admin.from("guest_device_locks").insert({
-      token_hash: tokenHash,
-      fingerprint_hash: fpHash,
-    });
-    if (lockErr) {
-      return new Response(
-        JSON.stringify({
-          error: "A consulta completa grátis neste dispositivo já foi utilizada. Faça login/cadastro para continuar.",
-          code: "GUEST_ALREADY_USED",
-        }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const cardsDescription = cards
       .map((card, i) => {
         const orient = card.reversed ? "invertida" : "direita";
@@ -139,6 +125,36 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const { error: lockErr } = await admin.from("guest_device_locks").insert({
+      token_hash: tokenHash,
+      fingerprint_hash: fpHash,
+    });
+    if (lockErr) {
+      const msg = (lockErr.message || "").toLowerCase();
+      const duplicate =
+        msg.includes("duplicate key") ||
+        msg.includes("unique constraint") ||
+        msg.includes("guest_device_locks_token_hash_key") ||
+        msg.includes("guest_device_locks_fingerprint_hash_key");
+      if (duplicate) {
+        return new Response(
+          JSON.stringify({
+            error: "A consulta completa grátis neste dispositivo já foi utilizada. Faça login/cadastro para continuar.",
+            code: "GUEST_ALREADY_USED",
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          error:
+            "Não foi possível registar o bloqueio do dispositivo. Verifique se a tabela guest_device_locks foi criada.",
+          code: "GUEST_LOCK_FAILED",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(

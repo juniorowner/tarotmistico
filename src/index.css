@@ -63,9 +63,20 @@
     @apply border-border;
   }
 
+  html {
+    font-size: 17px;
+  }
+
+  @media (max-width: 768px) {
+    html {
+      font-size: 16px;
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    line-height: 1.6;
   }
 
   h1, h2, h3, h4, h5, h6 {
