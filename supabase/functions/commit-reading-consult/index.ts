@@ -84,7 +84,7 @@ serve(async (req) => {
 
     const { data: existing } = await admin
       .from("reading_consults")
-      .select("id, used_credit")
+      .select("id, used_credit, welcome_free_ai")
       .eq("user_id", user.id)
       .eq("dedupe_key", dedupeKey)
       .maybeSingle();
@@ -108,6 +108,7 @@ serve(async (req) => {
         JSON.stringify({
           consultation_id: existing.id,
           used_credit: existing.used_credit,
+          welcome_free_ai: existing.welcome_free_ai ?? false,
           credits_balance: prof?.credits ?? 0,
           free_remaining_today: freeRemaining,
           duplicate: true,
@@ -129,15 +130,37 @@ serve(async (req) => {
 
     const n = usedBefore ?? 0;
     let usedCredit = false;
+    let welcomeFreeAi = false;
 
-    if (n >= FREE_CONSULTS_PER_DAY) {
-      const { data: profile, error: profErr } = await admin
+    const { data: profileBefore, error: profBeforeErr } = await admin
+      .from("profiles")
+      .select("credits, first_free_full_consult_used")
+      .eq("id", user.id)
+      .single();
+
+    if (profBeforeErr || !profileBefore) {
+      return new Response(
+        JSON.stringify({
+          error: "Não foi possível carregar o perfil do utilizador.",
+          code: "PROFILE_LOAD_FAILED",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!profileBefore.first_free_full_consult_used) {
+      const { data: markedWelcome } = await admin
         .from("profiles")
-        .select("credits")
+        .update({ first_free_full_consult_used: true })
         .eq("id", user.id)
-        .single();
+        .eq("first_free_full_consult_used", false)
+        .select("id")
+        .maybeSingle();
+      welcomeFreeAi = !!markedWelcome;
+    }
 
-      if (profErr || !profile || profile.credits < 1) {
+    if (n >= FREE_CONSULTS_PER_DAY && !welcomeFreeAi) {
+      if (profileBefore.credits < 1) {
         return new Response(
           JSON.stringify({
             error:
@@ -145,7 +168,7 @@ serve(async (req) => {
             code: "QUOTA_EXCEEDED",
             free_per_day: FREE_CONSULTS_PER_DAY,
             used_today: n,
-            credits: profile?.credits ?? 0,
+            credits: profileBefore.credits ?? 0,
           }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -153,9 +176,9 @@ serve(async (req) => {
 
       const { data: updated, error: decErr } = await admin
         .from("profiles")
-        .update({ credits: profile.credits - 1 })
+        .update({ credits: profileBefore.credits - 1 })
         .eq("id", user.id)
-        .eq("credits", profile.credits)
+        .eq("credits", profileBefore.credits)
         .select("credits")
         .single();
 
@@ -181,6 +204,7 @@ serve(async (req) => {
         spread_name: spreadName,
         cards,
         used_credit: usedCredit,
+        welcome_free_ai: welcomeFreeAi,
       })
       .select("id")
       .single();
@@ -191,7 +215,7 @@ serve(async (req) => {
       console.error("reading_consults insert:", insErr);
       const { data: raced } = await admin
         .from("reading_consults")
-        .select("id, used_credit")
+        .select("id, used_credit, welcome_free_ai")
         .eq("user_id", user.id)
         .eq("dedupe_key", dedupeKey)
         .maybeSingle();
@@ -212,6 +236,7 @@ serve(async (req) => {
           JSON.stringify({
             consultation_id: raced.id,
             used_credit: raced.used_credit,
+            welcome_free_ai: raced.welcome_free_ai ?? false,
             credits_balance: profRace?.credits ?? 0,
             free_remaining_today: freeRemRace,
             duplicate: true,
@@ -258,13 +283,15 @@ serve(async (req) => {
 
     const summary = usedCredit
       ? "1 crédito usado ao concluir a tiragem (consulta paga)."
-      : `Consulta gratuita ao concluir a tiragem (${Math.min(nAfter, FREE_CONSULTS_PER_DAY)}/${FREE_CONSULTS_PER_DAY} no limite diário).`;
+      : welcomeFreeAi
+        ? "Oferta de boas-vindas aplicada: 1 consulta completa grátis (inclui IA)."
+        : `Consulta gratuita ao concluir a tiragem (${Math.min(nAfter, FREE_CONSULTS_PER_DAY)}/${FREE_CONSULTS_PER_DAY} no limite diário).`;
     try {
       await admin.from("credit_ledger").insert({
         user_id: user.id,
         credits_delta: usedCredit ? -1 : 0,
         balance_after: profAfter?.credits ?? 0,
-        event_type: usedCredit ? "consult_paid" : "consult_free",
+        event_type: usedCredit ? "consult_paid" : welcomeFreeAi ? "consult_welcome_free" : "consult_free",
         summary,
         ref_table: "reading_consults",
         ref_id: row.id,
@@ -277,6 +304,7 @@ serve(async (req) => {
       JSON.stringify({
         consultation_id: row.id,
         used_credit: usedCredit,
+        welcome_free_ai: welcomeFreeAi,
         credits_balance: profAfter?.credits ?? 0,
         free_remaining_today: freeRemaining,
       }),

@@ -215,7 +215,7 @@ serve(async (req) => {
 
     const { data: consult, error: consultErr } = await admin
       .from("reading_consults")
-      .select("id, user_id, used_credit, revoked_at")
+      .select("id, user_id, used_credit, welcome_free_ai, revoked_at")
       .eq("id", consultId)
       .maybeSingle();
 
@@ -240,12 +240,12 @@ serve(async (req) => {
       );
     }
 
-    // Regra de produto: consulta grátis permite leitura manual das cartas, sem interpretação completa por IA.
-    if (!consult.used_credit) {
+    // Regra de produto: IA disponível em consulta paga ou na oferta única de boas-vindas.
+    if (!consult.used_credit && !consult.welcome_free_ai) {
       return new Response(
         JSON.stringify({
           error:
-            "Interpretação por IA disponível apenas para consultas com crédito. Use um pacote de créditos para desbloquear.",
+            "Interpretação por IA disponível para consultas com crédito ou na primeira consulta completa grátis de boas-vindas.",
           code: "AI_REQUIRES_CREDIT",
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }

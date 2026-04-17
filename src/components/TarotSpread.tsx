@@ -101,6 +101,7 @@ const TarotSpread = () => {
   const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const [consultUsedCredit, setConsultUsedCredit] = useState<boolean | null>(null);
+  const [consultWelcomeFreeAi, setConsultWelcomeFreeAi] = useState(false);
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
   const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
   const [guestReadingAlreadyUsed, setGuestReadingAlreadyUsed] = useState(hasCompletedFirstGuestReading);
@@ -145,6 +146,7 @@ const TarotSpread = () => {
     setReadingDedupeKey(crypto.randomUUID());
     setConsultationId(null);
     setConsultUsedCredit(null);
+    setConsultWelcomeFreeAi(false);
     setConsultCommitError(null);
     setCards(selected);
     setRevealed(new Array(n).fill(false));
@@ -176,6 +178,7 @@ const TarotSpread = () => {
     setReadingDedupeKey(null);
     setConsultationId(null);
     setConsultUsedCredit(null);
+    setConsultWelcomeFreeAi(false);
     setConsultCommitError(null);
     setConsultCommitLoading(false);
   };
@@ -211,8 +214,10 @@ const TarotSpread = () => {
         if (cancelled) return;
         setConsultationId(res.consultation_id);
         setConsultUsedCredit(res.used_credit);
+        setConsultWelcomeFreeAi(res.welcome_free_ai === true);
         trackEvent("consultation_committed", {
           used_credit: res.used_credit,
+          welcome_free_ai: res.welcome_free_ai === true,
           free_remaining_today: res.free_remaining_today,
         });
         await refreshAiQuota();
@@ -231,6 +236,7 @@ const TarotSpread = () => {
         }
         setConsultationId(null);
         setConsultUsedCredit(null);
+        setConsultWelcomeFreeAi(false);
       } finally {
         if (!cancelled) setConsultCommitLoading(false);
       }
@@ -432,7 +438,7 @@ const TarotSpread = () => {
               </DialogContent>
             </Dialog>
 
-            {allRevealed && selectedSpread && consultUsedCredit === true && (
+            {allRevealed && selectedSpread && (consultUsedCredit === true || consultWelcomeFreeAi) && (
               <AIInterpretation
                 spreadId={selectedSpread.id}
                 spreadName={selectedSpread.name}
@@ -444,7 +450,7 @@ const TarotSpread = () => {
               />
             )}
 
-            {allRevealed && consultUsedCredit === false && (
+            {allRevealed && consultUsedCredit === false && !consultWelcomeFreeAi && (
               <div className="mx-auto mb-6 max-w-2xl rounded-xl border border-border bg-card/40 p-4 text-center">
                 <p className="text-sm font-body text-muted-foreground leading-relaxed">
                   Nesta modalidade gratuita, você pode abrir as cartas e fazer a leitura manual. A interpretação completa

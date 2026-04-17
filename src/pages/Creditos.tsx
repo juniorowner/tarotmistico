@@ -327,7 +327,9 @@ const Creditos = () => {
               Créditos IA
             </h1>
             <p className="text-muted-foreground font-body max-w-xl mx-auto text-sm leading-relaxed">
-              Você tem <strong className="text-foreground">{FREE_PER_DAY} consultas grátis por dia</strong>{" "}
+              Na primeira vez, a conta ganha <strong className="text-foreground">1 consulta completa grátis</strong>{" "}
+              (inclui interpretação por IA). Depois disso, você tem{" "}
+              <strong className="text-foreground">{FREE_PER_DAY} consultas grátis por dia</strong>{" "}
               (tiragem completa, todas as cartas reveladas). Depois, cada consulta usa{" "}
               <strong className="text-foreground">1 crédito</strong> (ou pode esperar até o dia seguinte).
             </p>

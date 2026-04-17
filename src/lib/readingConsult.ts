@@ -17,6 +17,7 @@ export interface CommitReadingConsultRequest {
 export interface CommitReadingConsultResponse {
   consultation_id: string;
   used_credit: boolean;
+  welcome_free_ai?: boolean;
   credits_balance: number;
   free_remaining_today: number;
   duplicate?: boolean;

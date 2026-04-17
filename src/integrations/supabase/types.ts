@@ -18,15 +18,18 @@ export type Database = {
         Row: {
           id: string
           credits: number
+          first_free_full_consult_used: boolean
           created_at: string
         }
         Insert: {
           id: string
           credits?: number
+          first_free_full_consult_used?: boolean
           created_at?: string
         }
         Update: {
           credits?: number
+          first_free_full_consult_used?: boolean
           created_at?: string
         }
         Relationships: []
@@ -104,6 +107,7 @@ export type Database = {
           spread_name: string
           cards: Json
           used_credit: boolean
+          welcome_free_ai: boolean
           revoked_at: string | null
           created_at: string
         }
@@ -115,12 +119,14 @@ export type Database = {
           spread_name: string
           cards?: Json
           used_credit?: boolean
+          welcome_free_ai?: boolean
           revoked_at?: string | null
           created_at?: string
         }
         Update: {
           cards?: Json
           used_credit?: boolean
+          welcome_free_ai?: boolean
           revoked_at?: string | null
         }
         Relationships: []

@@ -22,7 +22,7 @@ const BoasVindasCreditos = () => {
           </h1>
 
           <p className="mt-4 text-muted-foreground font-body text-base md:text-lg leading-relaxed">
-            Você ganhou <strong className="text-foreground">1 crédito grátis por dia</strong> para usar nas suas consultas.
+            Você ganhou <strong className="text-foreground">1 consulta completa grátis de boas-vindas</strong> (com interpretação por IA).
           </p>
 
           <div className="mt-8 rounded-xl border border-primary/20 bg-card/70 p-6 text-left">

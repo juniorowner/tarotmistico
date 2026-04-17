@@ -167,6 +167,7 @@ const AIInterpretation = ({
       <p className="text-xs text-center text-muted-foreground font-body mb-4 px-2 leading-relaxed">
         Conta necessária. O baralho tem <strong className="text-foreground">78 cartas</strong>{" "}
         (Arcanos Maiores e Menores).{" "}
+        Na primeira vez, você recebe <strong className="text-foreground">1 consulta completa grátis</strong> com IA.{" "}
         Ao terminar a tiragem (todas as cartas reveladas), conta uma <strong className="text-foreground">consulta</strong>:{" "}
         <strong className="text-foreground">1 grátis por dia</strong>, depois{" "}
         <strong className="text-foreground">1 crédito por consulta</strong>. A interpretação por IA não cobra de novo.
