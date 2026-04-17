@@ -192,6 +192,10 @@ const AIInterpretation = ({
             Pedidos sobre autoferimento, violência a pessoas ou atos ilegais não são aceites — procure ajuda
             profissional ou emergência se precisar.
           </p>
+          <p className="text-[11px] text-center text-muted-foreground/85 font-body px-1 leading-snug">
+            A IA não faz diagnóstico médico, não confirma gravidez e não prevê morte com certeza ou prazo. Use como
+            reflexão, nunca como substituto de orientação profissional.
+          </p>
           <motion.button
             whileHover={{ scale: authLoading ? 1 : 1.03 }}
             whileTap={{ scale: authLoading ? 1 : 0.97 }}

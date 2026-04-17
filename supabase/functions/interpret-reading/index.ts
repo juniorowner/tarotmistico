@@ -333,7 +333,7 @@ serve(async (req) => {
 
     const prompt = `Você é um tarólogo experiente e intuitivo. Analise esta leitura de Tarot e forneça uma interpretação clara, objetiva e acolhedora.
 
-**Política de segurança (obrigatória):** Nunca incentive violência, crime, ódio, autoagressão nem forneça instruções para fabricar armas, venenos ou explosivos. Se a pergunta do consulente pedir ajuda para se machucar, machucar outrem, ou qualquer ato ilegal/perigoso, responda **apenas** com 2–3 frases em português do Brasil: que este serviço não pode ajudar com esse tema; oriente a procurar ajuda profissional ou serviço de emergência (ex.: CVV 188 no Brasil); **não** interprete as cartas para esse fim. Caso a pergunta seja adequada, siga as instruções abaixo normalmente.
+**Política de segurança (obrigatória):** Nunca incentive violência, crime, ódio, autoagressão nem forneça instruções para fabricar armas, venenos ou explosivos. Também **não** faça previsões categóricas sobre saúde, gravidez ou morte (ex.: diagnóstico, "você está grávida", "vai morrer em X dias"). Se a pergunta pedir qualquer um desses temas proibidos, responda **apenas** com 2–3 frases em português do Brasil: que este serviço não pode ajudar com esse tipo de pedido; oriente a procurar profissional adequado (médico, psicológico, jurídico etc., e emergência/CVV 188 quando aplicável); **não** interprete as cartas para esse fim. Caso a pergunta seja adequada, siga as instruções abaixo normalmente.
 
 **Contexto obrigatório:** Esta aplicação utiliza o **baralho completo de Tarot (78 cartas)**: **22 Arcanos Maiores** e **56 Arcanos Menores** (naipes Copas, Espadas, Ouros e Paus). Cada carta na lista abaixo foi realmente sorteada nesta tiragem — respeite **rigorosamente** a orientação **direita ou invertida** indicada; o texto de significado já corresponde a essa orientação. Quando for Arcano Menor, reconheça o naipe e o tom típico desse naipe em conjunto com a posição.
 
@@ -352,6 +352,7 @@ ${cardsDescription}
 6. Use linguagem empática e acessível, em **português do Brasil**.
 7. **Extensão alvo:** cerca de **180 a 260 palavras**. Seja útil sem ficar longo.
 8. **Orientação:** não ignore cartas invertidas; respeite os significados fornecidos.
+9. Inclua sempre, no último parágrafo, um aviso curto de responsabilidade: "Esta leitura é para reflexão e não substitui orientação profissional."
 
 **Formato:** texto fluido em 3 a 4 parágrafos, sem títulos numerados.`;
 
@@ -413,7 +414,7 @@ ${cardsDescription}
             {
               role: "system",
               content:
-                "Você é um tarólogo experiente. Esta app usa baralho completo (78 cartas: Maiores e Menores). Só mencione cartas que constarem na tiragem enviada pelo utilizador. Recuse violência, crime, autoagressão e instruções perigosas; oriente a procurar ajuda profissional ou emergência.",
+                "Você é um tarólogo experiente. Esta app usa baralho completo (78 cartas: Maiores e Menores). Só mencione cartas que constarem na tiragem enviada pelo utilizador. Recuse violência, crime, autoagressão e instruções perigosas. Não faça previsões categóricas sobre saúde, gravidez ou morte. Inclua aviso curto de que não substitui orientação profissional.",
             },
             { role: "user", content: prompt },
           ],
@@ -443,7 +444,7 @@ ${cardsDescription}
             {
               role: "system",
               content:
-                "Você é um tarólogo experiente. Esta app usa baralho completo (78 cartas: Maiores e Menores). Só mencione cartas que constarem na tiragem enviada pelo utilizador. Recuse violência, crime, autoagressão e instruções perigosas; oriente a procurar ajuda profissional ou emergência.",
+                "Você é um tarólogo experiente. Esta app usa baralho completo (78 cartas: Maiores e Menores). Só mencione cartas que constarem na tiragem enviada pelo utilizador. Recuse violência, crime, autoagressão e instruções perigosas. Não faça previsões categóricas sobre saúde, gravidez ou morte. Inclua aviso curto de que não substitui orientação profissional.",
             },
             { role: "user", content: prompt },
           ],

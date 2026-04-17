@@ -4,7 +4,7 @@
  */
 
 const UNSAFE_USER_MESSAGE =
-  "Não podemos processar pedidos sobre morte violenta, autoferimento, ferir outras pessoas ou atividades ilegais/perigosas. Se estiver em crise, procure ajuda profissional ou uma linha de apoio (no Brasil: CVV 188, 24 h).";
+  "Não podemos processar este pedido. Não fornecemos previsões categóricas sobre saúde/gravidez/morte (ex.: diagnósticos, certeza de gravidez, data de morte), nem conteúdo sobre autoferimento, violência ou atividades ilegais/perigosas. Procure orientação profissional adequada (médica, psicológica, jurídica etc.; no Brasil, CVV 188 para apoio emocional).";
 
 export function normalizeForSafetyScan(raw: string): string {
   return raw
@@ -50,6 +50,30 @@ const BLOCK_PATTERNS: RegExp[] = [
   /\bestupro\b/,
   /\babuso\s+sexual\s+de\s+menor\b/,
   /\bpedofil/,
+  // Previsões categóricas sensíveis (saúde, gravidez, morte).
+  /\b(estou|to)\s+gravida\b/,
+  /\bestou\s+gr[aá]vida\b/,
+  /\beu\s+estou\s+gravida\b/,
+  /\bestou\s+doente\b/,
+  /\bestou\s+com\s+cancer\b/,
+  /\btenho\s+cancer\b/,
+  /\bvou\s+morrer\b/,
+  /\bquando\s+vou\s+morrer\b/,
+  /\bem\s+quantos?\s+(dias|meses|anos)\s+vou\s+morrer\b/,
+  /\bvou\s+ter\s+cancer\b/,
+  /\btenho\s+(uma\s+)?doenca\b/,
+  /\bestou\s+com\s+(alguma\s+)?doenca\b/,
+  /\bdiagnostico\b/,
+  /\bdiagnosticar\b/,
+  /\bdiagnostique\b/,
+  /\bdiagnosticar\s+minha\s+saude\b/,
+  /\bprever\s+(se\s+)?(estou|to)\s+gravida\b/,
+  /\bvou\s+engravidar\b/,
+  /\bestou\s+gravida\s+sim\s+ou\s+nao\b/,
+  /\bela\s+esta\s+gravida\b/,
+  /\beu\s+vou\s+morrer\b/,
+  /\bminha\s+morte\b/,
+  /\bdata\s+da\s+minha\s+morte\b/,
 ];
 
 export function userQuestionFailsSafetyPolicy(text: string): boolean {
