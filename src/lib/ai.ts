@@ -73,7 +73,7 @@ function tarotCardsToApiCards(cards: DealtTarotCard[], labels: string[]): ApiCar
 }
 
 /** Lê o corpo da resposta HTTP da Edge Function (só pode ler uma vez). */
-async function parseFunctionsHttpError(
+export async function parseFunctionsHttpError(
   err: FunctionsHttpError
 ): Promise<{ message: string; code?: string; credits?: number; hint?: string }> {
   const res = err.context;

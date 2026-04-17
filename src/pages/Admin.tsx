@@ -86,6 +86,28 @@ const Admin = () => {
     );
   }, [data, q]);
 
+  const guestLogsFiltered = useMemo(() => {
+    const rows = data?.guest_logs ?? [];
+    if (!q) return rows;
+    return rows.filter((g) =>
+      [g.spread_name, g.question || "", g.interpretation_preview]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [data, q]);
+
+  const aiQuestionLogsFiltered = useMemo(() => {
+    const rows = data?.ai_question_logs ?? [];
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.spread_name, r.question || "", r.email, r.user_id || "", r.interpretation_preview]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [data, q]);
+
   const uniqueOrderStatuses = useMemo(() => {
     const set = new Set<string>();
     for (const o of data?.orders ?? []) set.add(o.status);
@@ -108,7 +130,7 @@ const Admin = () => {
         {!loading && !error && data && (
           <>
             <section className="rounded-xl border border-border bg-card/40 p-4">
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <div className="rounded-lg border border-border/70 p-3">
                   <p className="text-xs text-muted-foreground">Cadastrados</p>
                   <p className="text-2xl font-display text-primary">{data.users.length}</p>
@@ -118,15 +140,25 @@ const Admin = () => {
                   <p className="text-2xl font-display text-primary">{data.orders.length}</p>
                 </div>
                 <div className="rounded-lg border border-border/70 p-3">
-                  <p className="text-xs text-muted-foreground">Consultas</p>
+                  <p className="text-xs text-muted-foreground">Consultas (logados)</p>
                   <p className="text-2xl font-display text-primary">{data.consultations.length}</p>
+                </div>
+                <div className="rounded-lg border border-border/70 p-3">
+                  <p className="text-xs text-muted-foreground">Perguntas visitantes</p>
+                  <p className="text-2xl font-display text-primary">{data.guest_logs_total ?? data.guest_logs?.length ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-border/70 p-3">
+                  <p className="text-xs text-muted-foreground">Perguntas IA (logados)</p>
+                  <p className="text-2xl font-display text-primary">
+                    {data.ai_question_logs_total ?? data.ai_question_logs?.length ?? 0}
+                  </p>
                 </div>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar por e-mail, user_id, pedido, consulta..."
+                  placeholder="Buscar: e-mail, user_id, pedido, consulta, pergunta (visitante ou IA)…"
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 />
                 <select
@@ -224,6 +256,125 @@ const Admin = () => {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-border bg-card/40 p-4">
+              <h2 className="font-display text-sm uppercase tracking-wider text-primary mb-3">
+                Perguntas de visitantes (anónimos)
+              </h2>
+              <p className="text-xs text-muted-foreground mb-3">
+                Tabela <code className="text-foreground">guest_questions</code> — últimas{" "}
+                {(data.guest_logs ?? []).length} linhas carregadas, total{" "}
+                <strong>{data.guest_logs_total ?? (data.guest_logs ?? []).length}</strong>. O filtro de busca acima
+                aplica-se a esta lista.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-muted-foreground">
+                    <tr className="text-left border-b border-border">
+                      <th className="py-2 pr-3">Data</th>
+                      <th className="py-2 pr-3">Tiragem</th>
+                      <th className="py-2 pr-3 min-w-[220px]">Pergunta (texto completo)</th>
+                      <th className="py-2 pr-3">Modelo</th>
+                      <th className="py-2 min-w-[200px]">Prévia interpretação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.guest_logs ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-muted-foreground">
+                          Nenhum registo. Confirme a migration <code className="text-foreground">20260422112000</code> e
+                          o deploy de <code className="text-foreground">guest-interpret-once</code>.
+                        </td>
+                      </tr>
+                    ) : guestLogsFiltered.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-muted-foreground">
+                          Nenhum resultado para a busca atual.
+                        </td>
+                      </tr>
+                    ) : (
+                      guestLogsFiltered.map((g) => (
+                        <tr key={g.id} className="border-b border-border/60 align-top">
+                          <td className="py-2 pr-3 whitespace-nowrap">{fmtDate(g.created_at)}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap">{g.spread_name}</td>
+                          <td className="py-2 pr-3 text-foreground break-words whitespace-pre-wrap">
+                            {g.question?.trim() ? g.question : "— (leitura geral ou em branco)"}
+                          </td>
+                          <td className="py-2 pr-3 text-xs">{g.model_used || "—"}</td>
+                          <td className="py-2 text-xs text-muted-foreground break-words">{g.interpretation_preview}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-border bg-card/40 p-4">
+              <h2 className="font-display text-sm uppercase tracking-wider text-primary mb-3">
+                Perguntas IA (utilizadores logados)
+              </h2>
+              <p className="text-xs text-muted-foreground mb-3">
+                Tabela <code className="text-foreground">ai_readings</code> — últimas{" "}
+                {(data.ai_question_logs ?? []).length} carregadas, total{" "}
+                <strong>{data.ai_question_logs_total ?? (data.ai_question_logs ?? []).length}</strong>.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-muted-foreground">
+                    <tr className="text-left border-b border-border">
+                      <th className="py-2 pr-3">Data</th>
+                      <th className="py-2 pr-3">E-mail</th>
+                      <th className="py-2 pr-3">Tiragem</th>
+                      <th className="py-2 pr-3 min-w-[220px]">Pergunta</th>
+                      <th className="py-2 pr-3">Modelo</th>
+                      <th className="py-2 min-w-[200px]">Prévia interpretação</th>
+                      <th className="py-2 pr-2">Utilizador</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.ai_question_logs ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-4 text-muted-foreground">
+                          Nenhuma interpretação IA registada ainda, ou a tabela não está acessível.
+                        </td>
+                      </tr>
+                    ) : aiQuestionLogsFiltered.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-4 text-muted-foreground">
+                          Nenhum resultado para a busca atual.
+                        </td>
+                      </tr>
+                    ) : (
+                      aiQuestionLogsFiltered.map((r) => (
+                        <tr key={r.id} className="border-b border-border/60 align-top">
+                          <td className="py-2 pr-3 whitespace-nowrap">{fmtDate(r.created_at)}</td>
+                          <td className="py-2 pr-3 break-all">{r.email || "—"}</td>
+                          <td className="py-2 pr-3">{r.spread_name}</td>
+                          <td className="py-2 pr-3 break-words whitespace-pre-wrap">
+                            {r.question?.trim() ? r.question : "—"}
+                          </td>
+                          <td className="py-2 pr-3 text-xs">{r.model_used || "—"}</td>
+                          <td className="py-2 text-xs text-muted-foreground break-words">{r.interpretation_preview}</td>
+                          <td className="py-2 pr-2">
+                            {r.user_id ? (
+                              <Link
+                                to={`/admin/user/${r.user_id}?key=${encodeURIComponent(adminKey)}`}
+                                className="text-primary hover:underline whitespace-nowrap"
+                              >
+                                Ver
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

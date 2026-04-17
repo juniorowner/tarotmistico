@@ -40,7 +40,16 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const [usersRes, profilesRes, ordersRes, consultsRes] = await Promise.all([
+    const [
+      usersRes,
+      profilesRes,
+      ordersRes,
+      consultsRes,
+      guestLogsRes,
+      guestCountRes,
+      aiReadingsRes,
+      aiReadingsCountRes,
+    ] = await Promise.all([
       admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
       admin.from("profiles").select("id, credits, first_free_full_consult_used, created_at"),
       admin
@@ -53,6 +62,18 @@ serve(async (req) => {
         .select("id, user_id, spread_id, spread_name, used_credit, welcome_free_ai, revoked_at, created_at")
         .order("created_at", { ascending: false })
         .limit(1000),
+      admin
+        .from("guest_questions")
+        .select("id, spread_name, question, model_used, created_at, interpretation")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      admin.from("guest_questions").select("id", { count: "exact", head: true }),
+      admin
+        .from("ai_readings")
+        .select("id, user_id, question, spread_name, model_used, created_at, ai_interpretation")
+        .order("created_at", { ascending: false })
+        .limit(300),
+      admin.from("ai_readings").select("id", { count: "exact", head: true }),
     ]);
 
     const users = usersRes.data.users ?? [];
@@ -60,10 +81,53 @@ serve(async (req) => {
     const orders = ordersRes.data ?? [];
     const consultations = consultsRes.data ?? [];
 
+    if (guestLogsRes.error) {
+      console.error("admin-overview guest_questions:", guestLogsRes.error);
+    }
+    if (guestCountRes.error) {
+      console.error("admin-overview guest_questions count:", guestCountRes.error);
+    }
+    if (aiReadingsRes.error) {
+      console.error("admin-overview ai_readings:", aiReadingsRes.error);
+    }
+    if (aiReadingsCountRes.error) {
+      console.error("admin-overview ai_readings count:", aiReadingsCountRes.error);
+    }
+
+    const guest_logs = (guestLogsRes.data ?? []).map((row) => {
+      const t = row.interpretation ?? "";
+      const preview = t.length > 220 ? `${t.slice(0, 220)}…` : t;
+      return {
+        id: row.id,
+        spread_name: row.spread_name,
+        question: row.question,
+        model_used: row.model_used,
+        created_at: row.created_at,
+        interpretation_preview: preview,
+      };
+    });
+    const guest_logs_total = guestCountRes.count ?? guest_logs.length;
+
     const emailByUserId = new Map<string, string>();
     for (const u of users) {
       emailByUserId.set(u.id, u.email ?? "");
     }
+
+    const ai_question_logs = (aiReadingsRes.data ?? []).map((row) => {
+      const t = row.ai_interpretation ?? "";
+      const preview = t.length > 220 ? `${t.slice(0, 220)}…` : t;
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        email: row.user_id ? (emailByUserId.get(row.user_id) ?? "") : "",
+        question: row.question,
+        spread_name: row.spread_name,
+        model_used: row.model_used,
+        created_at: row.created_at,
+        interpretation_preview: preview,
+      };
+    });
+    const ai_question_logs_total = aiReadingsCountRes.count ?? ai_question_logs.length;
 
     return new Response(
       JSON.stringify({
@@ -82,6 +146,10 @@ serve(async (req) => {
           ...c,
           email: emailByUserId.get(c.user_id) ?? "",
         })),
+        guest_logs,
+        guest_logs_total,
+        ai_question_logs,
+        ai_question_logs_total,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

@@ -111,11 +111,27 @@ const AIInterpretation = ({
     } catch (err) {
       const e = err as Error & { code?: string; credits?: number; hint?: string };
       if (guestMode) {
-        if (e.code === "GUEST_ALREADY_USED" || e.message.includes("non-2xx")) {
+        if (e.code === "AI_TRUNCATED") {
+          setError(
+            e.message ||
+              "A leitura veio incompleta. Toque em «Gerar interpretação» de novo — a consulta grátis ainda não foi contabilizada neste dispositivo."
+          );
+          return;
+        }
+        if (e.code === "GUEST_LOG_FAILED") {
+          setError(
+            e.message ||
+              "O servidor não conseguiu guardar o registo da consulta. Tente de novo; se persistir, confirme no Supabase a tabela guest_questions e as migrations."
+          );
+          return;
+        }
+        if (e.code === "GUEST_ALREADY_USED") {
           onGuestConsumed?.();
           openAuthDialog("A consulta completa grátis deste dispositivo já foi usada. Entre ou crie conta para continuar.");
+          setError("A consulta grátis deste dispositivo já foi usada. Faça login para continuar.");
+          return;
         }
-        setError("A consulta grátis deste dispositivo já foi usada ou não pôde ser concluída sem login.");
+        setError(e.message || "Não foi possível concluir a interpretação grátis. Tente de novo ou faça login.");
         return;
       }
       if (e.message === "AUTH_REQUIRED" || e.code === "AUTH_REQUIRED") {

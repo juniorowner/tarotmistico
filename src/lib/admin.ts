@@ -40,11 +40,39 @@ export interface AdminConsultation {
   created_at: string;
 }
 
+/** Log de consultas anónimas (tabela guest_questions). */
+export interface AdminGuestLog {
+  id: string;
+  spread_name: string;
+  question: string | null;
+  model_used: string | null;
+  created_at: string;
+  interpretation_preview: string;
+}
+
+/** Perguntas / interpretações IA de utilizadores logados (ai_readings). */
+export interface AdminAiQuestionLog {
+  id: string;
+  user_id: string | null;
+  email: string;
+  question: string | null;
+  spread_name: string;
+  model_used: string | null;
+  created_at: string;
+  interpretation_preview: string;
+}
+
 export interface AdminOverviewResponse {
   users: AdminUser[];
   profiles: AdminProfile[];
   orders: AdminOrder[];
   consultations: AdminConsultation[];
+  /** Presente após deploy de admin-overview com guest_questions. */
+  guest_logs?: AdminGuestLog[];
+  guest_logs_total?: number;
+  /** Últimas interpretações IA (pergunta + prévia), tabela ai_readings. */
+  ai_question_logs?: AdminAiQuestionLog[];
+  ai_question_logs_total?: number;
 }
 
 export interface AdminUserDetailResponse {

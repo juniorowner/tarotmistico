@@ -68,6 +68,13 @@ function extractGeminiInterpretationText(data: Record<string, unknown>): string 
   return "";
 }
 
+/** Cortes típicos a meio de frase (PT-BR) ou respostas muito curtas. */
+function looksTruncatedPtBr(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 80) return true;
+  return /\b(com|com\s+o|com\s+a|com\s+os|com\s+as|de|do|da|dos|das|no|na|nos|nas|em|por|para|que)\s*$/i.test(t);
+}
+
 type SupabaseAdmin = ReturnType<typeof createClient>;
 
 /** Devolve crédito ou slot grátis se a IA falhar depois da consulta registada. Idempotente. */
@@ -343,6 +350,7 @@ ${cardsDescription}
 7. **Extensão alvo:** cerca de **180 a 260 palavras**. Seja útil sem ficar longo.
 8. **Orientação:** não ignore cartas invertidas; respeite os significados fornecidos.
 9. Inclua sempre, no último parágrafo, um aviso curto de responsabilidade: "Esta leitura é para reflexão e não substitui orientação profissional."
+10. **Importante:** conclua sempre com uma frase completa e pontuação final (. ! ou ?).
 
 **Formato:** texto fluido em 3 a 4 parágrafos, sem títulos numerados.`;
 
@@ -350,45 +358,64 @@ ${cardsDescription}
     let modelUsed = "";
 
     if (aiProvider === "gemini") {
-      const generationConfig: Record<string, unknown> = {
-        temperature: 0.88,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: geminiMaxOut,
-      };
-      // Só Gemini 2.5+ expõe thinking; desligar evita cortar a resposta visível quando o orçamento vai todo para o raciocínio interno.
-      if (/gemini[^a-z0-9]*2[^a-z0-9]*5|2\.5-flash|2\.5-pro/i.test(geminiModel)) {
-        generationConfig.thinkingConfig = { thinkingBudget: 0 };
-      }
+      let maxOut = geminiMaxOut;
+      let lastFinish = "";
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-          geminiModel
-        )}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig,
-          }),
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const generationConfig: Record<string, unknown> = {
+          temperature: 0.88,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: maxOut,
+        };
+        // Só Gemini 2.5+ expõe thinking; desligar evita cortar a resposta visível quando o orçamento vai todo para o raciocínio interno.
+        if (/gemini[^a-z0-9]*2[^a-z0-9]*5|2\.5-flash|2\.5-pro/i.test(geminiModel)) {
+          generationConfig.thinkingConfig = { thinkingBudget: 0 };
         }
-      );
 
-      const data = await response.json();
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+            geminiModel
+          )}:generateContent?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig,
+            }),
+          }
+        );
 
-      if (!response.ok) {
-        console.error("Gemini API error:", data);
-        const msg =
-          data?.error?.message ||
-          (typeof data?.error === "string" ? data.error : "Gemini API error");
-        throw new Error(msg);
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error("Gemini API error:", data);
+          const msg =
+            data?.error?.message ||
+            (typeof data?.error === "string" ? data.error : "Gemini API error");
+          throw new Error(msg);
+        }
+
+        aiInterpretation = extractGeminiInterpretationText(data as Record<string, unknown>);
+        lastFinish = (data as { candidates?: Array<{ finishReason?: string }> }).candidates?.[0]?.finishReason ?? "";
+
+        const truncated =
+          lastFinish === "MAX_TOKENS" ||
+          (aiInterpretation.length > 0 && looksTruncatedPtBr(aiInterpretation));
+
+        if (!aiInterpretation) break;
+        if (!truncated) break;
+        if (attempt === 0) {
+          maxOut = Math.min(8192, Math.max(maxOut + 512, maxOut * 2));
+          console.warn("interpret-reading: resposta truncada; nova tentativa com maxOutputTokens=", maxOut);
+        }
       }
 
-      aiInterpretation = extractGeminiInterpretationText(data as Record<string, unknown>);
-      const finish = (data as { candidates?: Array<{ finishReason?: string }> }).candidates?.[0]?.finishReason;
-      if (finish === "MAX_TOKENS") {
-        console.warn("interpret-reading: Gemini finishReason=MAX_TOKENS — considere subir GEMINI_MAX_OUTPUT_TOKENS.");
+      if (lastFinish === "MAX_TOKENS" || looksTruncatedPtBr(aiInterpretation)) {
+        throw new Error(
+          "A resposta da IA veio incompleta. Tente novamente; o seu crédito ou vaga grátis foi reposto se já tivesse sido debitado."
+        );
       }
       modelUsed = geminiModel;
     } else if (aiProvider === "openai") {
