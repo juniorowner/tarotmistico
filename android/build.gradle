@@ -24,6 +24,20 @@ allprojects {
     }
 }
 
+// Capacitor 8 gera Java 21 no capacitor.build.gradle; JDK sem 21 falha com "invalid source release: 21".
+// Força Java 17 em todos os módulos Android (compatível com Android Studio em macOS antigo).
+subprojects { subproject ->
+    subproject.afterEvaluate {
+        if (subproject.plugins.hasPlugin("com.android.application") ||
+                subproject.plugins.hasPlugin("com.android.library")) {
+            subproject.android.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
