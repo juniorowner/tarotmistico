@@ -37,6 +37,19 @@ function translatePaymentStatus(statusRaw: string): string {
   return labels[status] ?? (status ? status.replace(/_/g, " ") : "Desconhecido");
 }
 
+function translateLedgerEventType(eventTypeRaw: string): string {
+  const key = String(eventTypeRaw || "").toLowerCase();
+  const labels: Record<string, string> = {
+    purchase: "Compra",
+    consult_free: "Consulta grátis",
+    consult_paid: "Consulta paga",
+    refund_ai_failure: "Reembolso por falha da IA",
+    refund_free_consult: "Estorno de consulta grátis",
+    refund_mercadopago: "Reembolso Mercado Pago",
+  };
+  return labels[key] ?? (key ? key.replace(/_/g, " ") : "Movimento");
+}
+
 const Creditos = () => {
   const { user, openAuthDialog, credits, aiQuota, refreshAiQuota } = useAuth();
   const [paying, setPaying] = useState<CreditPackageId | null>(null);
@@ -482,7 +495,9 @@ const Creditos = () => {
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-                        <span className="uppercase tracking-wide">{row.event_type}</span>
+                        <span className="uppercase tracking-wide">
+                          {translateLedgerEventType(row.event_type)}
+                        </span>
                         <span>Saldo após: {row.balance_after}</span>
                         <span>{new Date(row.created_at).toLocaleString("pt-BR")}</span>
                       </div>

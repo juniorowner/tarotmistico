@@ -29,6 +29,7 @@ serve(async (req) => {
     const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") ?? "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const webhookSecret = Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET") ?? "";
     if (!accessToken) {
       return new Response(JSON.stringify({ error: "MERCADOPAGO_ACCESS_TOKEN ausente." }), {
         status: 503,
@@ -95,6 +96,13 @@ serve(async (req) => {
     const { credit_order_id: _drop, ...rest } = payload;
     const mpBody: Record<string, unknown> = { ...rest };
     mpBody.external_reference = creditOrderId;
+    // Garante atualização assíncrona de status/créditos mesmo se o utilizador fechar o modal.
+    if (webhookSecret) {
+      mpBody.notification_url = `${supabaseUrl.replace(
+        /\/$/,
+        ""
+      )}/functions/v1/mercadopago-webhook?secret=${encodeURIComponent(webhookSecret)}`;
+    }
 
     const idempotencyKey = crypto.randomUUID();
     const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
