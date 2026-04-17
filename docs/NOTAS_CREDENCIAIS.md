@@ -41,7 +41,7 @@ Se no log aparecer `bun install --frozen-lockfile` e falhar: o Pages deteta `bun
 | **Build command** | `npm run build` — **não** uses `bun run build` no painel. |
 | **Build output directory** | `dist` |
 | **Root directory** | vazio, se o `package.json` estiver na raiz do repo |
-| **Deploy command** / **Non-production branch deploy command** | **Deixar vazio.** Este projecto é **site estático** (Vite → `dist`). Se meteres `npx wrangler deploy`, o Cloudflare trata como **Workers** e o Wrangler exige Vite ≥ 6 ou config extra — e **não** é o fluxo certo para um SPA só em ficheiros estáticos. |
+| **Deploy command** / **Non-production branch deploy command** | **Deixar vazio** para **Pages** puro (só publica `dist`). Se deixares `npx wrangler deploy` (fluxo **Workers**), o Wrangler exige **Vite ≥ 6** — o repo já usa Vite 6+, mas **Pages sem deploy command** continua a ser o mais simples. |
 
 Depois de guardar: **Retry deployment** (ou *Clear build cache* se o log ainda mostrar comandos antigos).
 
