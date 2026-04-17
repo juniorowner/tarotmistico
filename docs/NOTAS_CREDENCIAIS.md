@@ -32,6 +32,18 @@ Variáveis **`VITE_*`** são embutidas no bundle em **build time**. Configurar n
 
 **Não** pôr no front: `service_role`, tokens MP de servidor, `GEMINI_API_KEY`, etc.
 
+### Cloudflare Pages — build (npm, não Bun)
+
+Se no log aparecer `bun install --frozen-lockfile` e falhar: o Pages deteta `bun.lock` / `bun.lockb` e tenta Bun. **Este repo usa só `package-lock.json`.** Não commitar `bun.lock` nem `bun.lockb` (estão no `.gitignore`).
+
+| Campo no Pages | Valor |
+|-----------------|--------|
+| **Build command** | `npm run build` (ou `npm ci && npm run build` para instalação estrita a partir do lock npm) |
+| **Build output directory** | `dist` |
+| **Root directory** | vazio, se o `package.json` estiver na raiz do repo |
+
+Variáveis `VITE_*` em **Settings → Environment variables** (Production).
+
 ---
 
 ## Supabase — Auth (dashboard)

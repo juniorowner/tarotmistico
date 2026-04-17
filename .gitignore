@@ -30,3 +30,7 @@ dist-ssr
 
 # Supabase CLI artefactos locais
 supabase/.temp/
+
+# Bun (Cloudflare Pages usa Bun se existir lock; este projeto é npm + package-lock.json)
+bun.lock
+bun.lockb
