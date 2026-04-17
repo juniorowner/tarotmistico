@@ -240,6 +240,18 @@ serve(async (req) => {
       );
     }
 
+    // Regra de produto: consulta grátis permite leitura manual das cartas, sem interpretação completa por IA.
+    if (!consult.used_credit) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Interpretação por IA disponível apenas para consultas com crédito. Use um pacote de créditos para desbloquear.",
+          code: "AI_REQUIRES_CREDIT",
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     let { data: priorAi } = await admin
       .from("ai_readings")
       .select("id, ai_interpretation, model_used")

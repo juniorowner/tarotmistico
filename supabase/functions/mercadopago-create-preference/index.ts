@@ -15,17 +15,17 @@ const PACKAGES: Record<
 > = {
   essencial: {
     credits: 5,
-    amountCents: 10,
+    amountCents: 990,
     title: "5 créditos — Interpretações IA",
   },
   popular: {
     credits: 15,
-    amountCents: 20,
+    amountCents: 2490,
     title: "15 créditos — Interpretações IA",
   },
   premium: {
     credits: 40,
-    amountCents: 30,
+    amountCents: 4990,
     title: "40 créditos — Interpretações IA",
   },
 };

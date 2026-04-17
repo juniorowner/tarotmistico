@@ -79,6 +79,7 @@ const TarotSpread = () => {
   const [selectedCard, setSelectedCard] = useState<DealtTarotCard | null>(null);
   const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [consultUsedCredit, setConsultUsedCredit] = useState<boolean | null>(null);
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
   const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
 
@@ -112,6 +113,7 @@ const TarotSpread = () => {
     const n = selectedSpread.cardCount;
     setReadingDedupeKey(crypto.randomUUID());
     setConsultationId(null);
+    setConsultUsedCredit(null);
     setConsultCommitError(null);
     setCards(selected);
     setRevealed(new Array(n).fill(false));
@@ -142,6 +144,7 @@ const TarotSpread = () => {
     setSelectedCard(null);
     setReadingDedupeKey(null);
     setConsultationId(null);
+    setConsultUsedCredit(null);
     setConsultCommitError(null);
     setConsultCommitLoading(false);
   };
@@ -165,6 +168,7 @@ const TarotSpread = () => {
         });
         if (cancelled) return;
         setConsultationId(res.consultation_id);
+        setConsultUsedCredit(res.used_credit);
         await refreshAiQuota();
       } catch (err) {
         if (cancelled) return;
@@ -178,6 +182,7 @@ const TarotSpread = () => {
           setConsultCommitError(e instanceof Error ? e.message : "Não foi possível registar a consulta.");
         }
         setConsultationId(null);
+        setConsultUsedCredit(null);
       } finally {
         if (!cancelled) setConsultCommitLoading(false);
       }
@@ -364,7 +369,7 @@ const TarotSpread = () => {
               </DialogContent>
             </Dialog>
 
-            {allRevealed && selectedSpread && (
+            {allRevealed && selectedSpread && consultUsedCredit === true && (
               <AIInterpretation
                 spreadId={selectedSpread.id}
                 spreadName={selectedSpread.name}
@@ -374,6 +379,21 @@ const TarotSpread = () => {
                 consultCommitLoading={consultCommitLoading}
                 consultCommitError={consultCommitError}
               />
+            )}
+
+            {allRevealed && consultUsedCredit === false && (
+              <div className="mx-auto mb-6 max-w-2xl rounded-xl border border-border bg-card/40 p-4 text-center">
+                <p className="text-sm font-body text-muted-foreground leading-relaxed">
+                  Nesta modalidade gratuita, você pode abrir as cartas e fazer a leitura manual. A interpretação completa
+                  por IA fica disponível apenas em consultas com crédito.
+                </p>
+                <Link
+                  to="/creditos"
+                  className="mt-3 inline-flex text-sm font-display uppercase tracking-wider text-primary hover:underline"
+                >
+                  Ver créditos de IA
+                </Link>
+              </div>
             )}
 
             {allRevealed && (

@@ -53,6 +53,24 @@ function loadMercadoPagoSdk() {
   return mpSdkLoader;
 }
 
+function translatePaymentStatus(statusRaw: string): string {
+  const status = String(statusRaw || "").toLowerCase();
+  const labels: Record<string, string> = {
+    pending: "Pendente",
+    in_process: "Em processamento",
+    approved: "Pago",
+    authorized: "Autorizado",
+    rejected: "Recusado",
+    cancelled: "Cancelado",
+    canceled: "Cancelado",
+    refunded: "Reembolsado",
+    charged_back: "Estornado (chargeback)",
+    paid: "Pago",
+    failed: "Falhou",
+  };
+  return labels[status] ?? (status ? status.replaceAll("_", " ") : "Desconhecido");
+}
+
 const Creditos = () => {
   const { user, openAuthDialog, credits, aiQuota, refreshAiQuota } = useAuth();
   const [paying, setPaying] = useState<CreditPackageId | null>(null);
@@ -561,7 +579,9 @@ const Creditos = () => {
                     <div key={o.id} className="rounded-md border border-border/70 bg-background/50 p-3 text-sm">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium text-foreground">{formatBrl(o.amount_cents)}</span>
-                        <span className="text-xs uppercase text-muted-foreground">{o.status}</span>
+                        <span className="text-xs uppercase text-muted-foreground">
+                          {translatePaymentStatus(o.status)}
+                        </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {o.credits} créditos • pacote {o.package_id}
