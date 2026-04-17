@@ -11,6 +11,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { AiQuotaResponse } from "@/lib/aiQuota";
 import { fetchAiQuota } from "@/lib/aiQuota";
+import { trackEvent } from "@/lib/analytics";
 
 const POST_LOGIN_REDIRECT_FLAG = "tarot:post-login-redirected:v1";
 
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         typeof window !== "undefined" &&
         window.location.pathname !== "/bem-vindo-creditos"
       ) {
+        trackEvent("auth_signed_in");
         try {
           const redirected = window.sessionStorage.getItem(POST_LOGIN_REDIRECT_FLAG) === "1";
           if (!redirected) {

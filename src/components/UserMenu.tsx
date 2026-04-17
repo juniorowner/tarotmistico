@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics";
 import { LogIn, LogOut, Sparkles } from "lucide-react";
 
 export function UserMenu() {
@@ -18,7 +19,10 @@ export function UserMenu() {
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => openAuthDialog()}
+        onClick={() => {
+          trackEvent("auth_dialog_open_clicked", { source: "user_menu" });
+          openAuthDialog();
+        }}
         className="font-display text-xs tracking-wider uppercase gap-1.5 border-primary/40"
       >
         <LogIn className="h-3.5 w-3.5" />

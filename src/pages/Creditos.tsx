@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SEO from "@/components/SEO";
 
-const FREE_PER_DAY = 3;
+const FREE_PER_DAY = 1;
 
 function translatePaymentStatus(statusRaw: string): string {
   const status = String(statusRaw || "").toLowerCase();

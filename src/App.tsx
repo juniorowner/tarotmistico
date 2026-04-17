@@ -9,6 +9,7 @@ import SplashScreen from "./components/SplashScreen";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthDialog } from "./components/AuthDialog";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { RouteAnalytics } from "./components/RouteAnalytics";
 import Index from "./pages/Index";
 import Diary from "./pages/Diary";
 import Creditos from "./pages/Creditos";
@@ -32,6 +33,7 @@ const App = () => {
             {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
             <BrowserRouter>
               <ScrollToTop />
+              <RouteAnalytics />
               <AuthDialog />
               <Routes>
                 <Route path="/" element={<Index />} />

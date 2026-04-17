@@ -127,6 +127,7 @@ export function AuthDialog() {
     setCanResendConfirmation(false);
     const cleanEmail = sanitizeEmail(email);
     if (!cleanEmail || (!forgotPassword && !password)) return;
+    trackEvent("auth_email_submit", { mode: isSignUp ? "signup" : "login" });
 
     setLoading(true);
     const { data, error: err } = isSignUp
@@ -147,24 +148,32 @@ export function AuthDialog() {
         raw.includes("email not confirmed") || raw.includes("email_not_confirmed");
       setError(formatAuthError(err.message));
       setCanResendConfirmation(emailNotConfirmed);
+      trackEvent("auth_email_failed", {
+        mode: isSignUp ? "signup" : "login",
+        reason: err.message,
+      });
       return;
     }
 
     if (isSignUp) {
       if (data.session) {
+        trackEvent("auth_email_success", { mode: "signup" });
         closeAuthDialog();
         return;
       }
+      trackEvent("auth_signup_pending_confirmation");
       setInfoMessage(
         "Enviamos um e-mail de confirmação. Abra o link no e-mail para ativar a conta."
       );
       setCanResendConfirmation(true);
     } else {
+      trackEvent("auth_email_success", { mode: "login" });
       closeAuthDialog();
     }
   };
 
   const handleGoogle = async () => {
+    trackEvent("auth_google_submit");
     setError(null);
     setLoading(true);
     const { error: err } = await supabase.auth.signInWithOAuth({
@@ -172,7 +181,10 @@ export function AuthDialog() {
       options: { redirectTo: `${origin}/` },
     });
     setLoading(false);
-    if (err) setError(formatAuthError(err.message));
+    if (err) {
+      setError(formatAuthError(err.message));
+      trackEvent("auth_google_failed", { reason: err.message });
+    }
   };
 
   return (
@@ -234,6 +246,7 @@ export function AuthDialog() {
                 type="button"
                 variant={isSignUp ? "outline" : "default"}
                 onClick={() => {
+                  trackEvent("auth_mode_selected", { mode: "login" });
                   setIsSignUp(false);
                   setInfoMessage(null);
                   setCanResendConfirmation(false);
@@ -248,6 +261,7 @@ export function AuthDialog() {
                 type="button"
                 variant={isSignUp ? "default" : "outline"}
                 onClick={() => {
+                  trackEvent("auth_mode_selected", { mode: "signup" });
                   setIsSignUp(true);
                   setInfoMessage(null);
                   setCanResendConfirmation(false);

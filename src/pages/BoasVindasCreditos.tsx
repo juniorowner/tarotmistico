@@ -2,11 +2,8 @@ import { Link } from "react-router-dom";
 import { Sparkles, Gift, ArrowRight } from "lucide-react";
 import { SiteNavBar } from "@/components/SiteNavBar";
 import { UserMenu } from "@/components/UserMenu";
-import { useAuth } from "@/contexts/AuthContext";
 
 const BoasVindasCreditos = () => {
-  const { aiQuota, credits } = useAuth();
-
   return (
     <div className="min-h-screen bg-background">
       <SiteNavBar>
@@ -25,8 +22,7 @@ const BoasVindasCreditos = () => {
           </h1>
 
           <p className="mt-4 text-muted-foreground font-body text-base md:text-lg leading-relaxed">
-            Você já pode usar seus benefícios: <strong className="text-foreground">{aiQuota?.free_remaining_today ?? 0}/1</strong>{" "}
-            consultas grátis hoje e <strong className="text-foreground">{credits ?? 0} créditos</strong> disponíveis.
+            Você ganhou <strong className="text-foreground">1 crédito grátis por dia</strong> para usar nas suas consultas.
           </p>
 
           <div className="mt-8 rounded-xl border border-primary/20 bg-card/70 p-6 text-left">

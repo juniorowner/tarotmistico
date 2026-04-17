@@ -14,3 +14,12 @@ export function trackEvent(eventName: string, params?: EventParams) {
   gtag("event", eventName, params);
 }
 
+export function trackPageView(path: string, title?: string) {
+  const gtag = getGtag();
+  if (!gtag) return;
+  gtag("event", "page_view", {
+    page_path: path,
+    page_title: title,
+  });
+}
+
