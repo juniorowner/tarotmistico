@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { allCards, type DealtTarotCard } from "@/data/tarotCards";
@@ -87,6 +87,7 @@ const TarotSpread = () => {
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
   const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
   const [guestReadingAlreadyUsed, setGuestReadingAlreadyUsed] = useState(hasGuestOnceBeenConsumedLocally);
+  const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
   const quotaExhausted =
@@ -130,6 +131,17 @@ const TarotSpread = () => {
     setHasStarted(true);
     setSelectedCard(null);
   }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, guestReadingAlreadyUsed, navigate]);
+
+  useEffect(() => {
+    if (!hasStarted || cards.length === 0) return;
+    const id = window.setTimeout(() => {
+      firstCardAnchorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 120);
+    return () => window.clearTimeout(id);
+  }, [hasStarted, cards]);
 
   useEffect(() => {
     if (user && selectedSpread && !hasStarted) {
@@ -224,7 +236,7 @@ const TarotSpread = () => {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       spreadName: selectedSpread.name,
-      spreadEmoji: selectedSpread.emoji,
+      spreadEmoji: "",
       labels: selectedSpread.labels,
       cards,
       note: "",
@@ -332,21 +344,26 @@ const TarotSpread = () => {
                 animate={{ opacity: 1 }}
                 className="font-display text-sm tracking-[0.2em] uppercase text-primary/70 mb-8"
               >
-                {selectedSpread.emoji} {selectedSpread.name}
+                {selectedSpread.name}
               </motion.p>
             )}
 
             <div className={`${getGridClass()} mb-12`}>
               {cards.map((card, i) => (
-                <TarotCardComponent
-                  key={`${card.id}-${i}`}
-                  card={card}
-                  isReversed={card.isReversed}
-                  label={selectedSpread?.labels[i] || ""}
-                  isRevealed={revealed[i]}
-                  onReveal={() => revealCard(i)}
-                  delay={i * 0.15}
-                />
+                <div
+                  key={`slot-${card.id}-${i}`}
+                  ref={i === 0 ? firstCardAnchorRef : undefined}
+                  className={i === 0 ? "scroll-mt-28" : undefined}
+                >
+                  <TarotCardComponent
+                    card={card}
+                    isReversed={card.isReversed}
+                    label={selectedSpread?.labels[i] || ""}
+                    isRevealed={revealed[i]}
+                    onReveal={() => revealCard(i)}
+                    delay={i * 0.15}
+                  />
+                </div>
               ))}
             </div>
 
@@ -362,7 +379,7 @@ const TarotSpread = () => {
                   <>
                     <DrawerHeader className="text-left pb-2">
                       <DrawerTitle className="font-display text-lg text-primary">
-                        {selectedCard.emoji} {selectedCard.name}
+                        {selectedCard.name}
                         {selectedCard.isReversed ? " · invertida" : ""}
                       </DrawerTitle>
                       <DrawerDescription className="text-xs text-muted-foreground font-body">
@@ -389,7 +406,7 @@ const TarotSpread = () => {
                   <>
                     <DialogHeader className="shrink-0 border-b border-border/70 p-6 pb-3 pr-14 text-left">
                       <DialogTitle className="font-display text-xl text-primary">
-                        {selectedCard.emoji} {selectedCard.name}
+                        {selectedCard.name}
                         {selectedCard.isReversed ? " · invertida" : ""}
                       </DialogTitle>
                       <DialogDescription className="font-body text-xs italic text-muted-foreground">

@@ -59,7 +59,6 @@ const TarotCardComponent = ({
           >
             {card && (
               <>
-                <span className="mb-2 text-4xl">{card.emoji}</span>
                 <h3 className="mb-1 font-display text-sm font-semibold text-primary md:text-base">{card.name}</h3>
                 <p className="mb-2 text-xs italic text-muted-foreground">{card.nameEn}</p>
                 {isReversed && (

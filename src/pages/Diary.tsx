@@ -179,7 +179,6 @@ const Diary = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{entry.spreadEmoji}</span>
                         <div>
                           <h3 className="font-display text-sm text-primary">
                             {entry.spreadName}
@@ -196,13 +195,10 @@ const Diary = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="flex gap-1">
-                          {entry.cards.map((card) => (
-                            <span key={card.id} className="text-lg" title={card.name}>
-                              {card.emoji}
-                            </span>
-                          ))}
-                        </div>
+                        <span className="text-xs text-muted-foreground font-body">
+                          {entry.cards.length}{" "}
+                          {entry.cards.length === 1 ? "carta" : "cartas"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -223,7 +219,6 @@ const Diary = () => {
                                 key={`${entry.id}-${card.id}-${ci}`}
                                 className="flex items-start gap-3 p-3 rounded-lg bg-background/50 border border-border/30"
                               >
-                                <span className="text-2xl mt-0.5">{card.emoji}</span>
                                 <div className="min-w-0">
                                   <p className="text-xs text-primary/60 font-display tracking-wider uppercase">
                                     {entry.labels[ci]}

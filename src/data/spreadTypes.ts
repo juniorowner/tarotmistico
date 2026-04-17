@@ -4,7 +4,6 @@ export interface SpreadType {
   description: string;
   cardCount: number;
   labels: string[];
-  emoji: string;
 }
 
 export const spreadTypes: SpreadType[] = [
@@ -14,7 +13,6 @@ export const spreadTypes: SpreadType[] = [
     description: "Uma leitura clássica de 3 cartas para entender sua jornada no tempo.",
     cardCount: 3,
     labels: ["Passado", "Presente", "Futuro"],
-    emoji: "⏳",
   },
   {
     id: "yes-no",
@@ -22,7 +20,6 @@ export const spreadTypes: SpreadType[] = [
     description: "Uma carta para responder sua pergunta de forma direta.",
     cardCount: 1,
     labels: ["Resposta"],
-    emoji: "❓",
   },
   {
     id: "love",
@@ -30,7 +27,6 @@ export const spreadTypes: SpreadType[] = [
     description: "5 cartas revelam os aspectos do seu relacionamento e destino amoroso.",
     cardCount: 5,
     labels: ["Você", "O Outro", "A Conexão", "O Desafio", "O Futuro"],
-    emoji: "💕",
   },
   {
     id: "celtic-cross",
@@ -49,6 +45,5 @@ export const spreadTypes: SpreadType[] = [
       "Esperanças",
       "Resultado Final",
     ],
-    emoji: "✝️",
   },
 ];

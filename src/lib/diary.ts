@@ -25,7 +25,7 @@ function rowToEntry(row: {
     id: row.id,
     date: row.reading_date,
     spreadName: row.spread_name,
-    spreadEmoji: row.spread_emoji ?? "✨",
+      spreadEmoji: row.spread_emoji ?? "",
     labels: row.labels ?? [],
     cards: row.cards as DiaryTarotCard[],
     note: row.note ?? "",

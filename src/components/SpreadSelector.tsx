@@ -22,7 +22,6 @@ const SpreadSelector = ({ onSelect, selected }: SpreadSelectorProps) => {
               : "border-border bg-card hover:border-primary/40 hover:bg-card/80"
           }`}
         >
-          <span className="text-2xl mb-2 block">{spread.emoji}</span>
           <h3 className="font-display text-sm text-primary mb-1">{spread.name}</h3>
           <p className="text-xs text-muted-foreground font-body leading-relaxed">
             {spread.description}
