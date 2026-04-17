@@ -130,11 +130,11 @@ serve(async (req) => {
 
     const n = usedBefore ?? 0;
     let usedCredit = false;
-    let welcomeFreeAi = false;
+    const welcomeFreeAi = false;
 
     const { data: profileBefore, error: profBeforeErr } = await admin
       .from("profiles")
-      .select("credits, first_free_full_consult_used")
+      .select("credits")
       .eq("id", user.id)
       .single();
 
@@ -148,18 +148,7 @@ serve(async (req) => {
       );
     }
 
-    if (!profileBefore.first_free_full_consult_used) {
-      const { data: markedWelcome } = await admin
-        .from("profiles")
-        .update({ first_free_full_consult_used: true })
-        .eq("id", user.id)
-        .eq("first_free_full_consult_used", false)
-        .select("id")
-        .maybeSingle();
-      welcomeFreeAi = !!markedWelcome;
-    }
-
-    if (n >= FREE_CONSULTS_PER_DAY && !welcomeFreeAi) {
+    if (n >= FREE_CONSULTS_PER_DAY) {
       if (profileBefore.credits < 1) {
         return new Response(
           JSON.stringify({
@@ -283,15 +272,13 @@ serve(async (req) => {
 
     const summary = usedCredit
       ? "1 crédito usado ao concluir a tiragem (consulta paga)."
-      : welcomeFreeAi
-        ? "Oferta de boas-vindas aplicada: 1 consulta completa grátis (inclui IA)."
-        : `Consulta gratuita ao concluir a tiragem (${Math.min(nAfter, FREE_CONSULTS_PER_DAY)}/${FREE_CONSULTS_PER_DAY} no limite diário).`;
+      : `Consulta gratuita ao concluir a tiragem (${Math.min(nAfter, FREE_CONSULTS_PER_DAY)}/${FREE_CONSULTS_PER_DAY} no limite diário).`;
     try {
       await admin.from("credit_ledger").insert({
         user_id: user.id,
         credits_delta: usedCredit ? -1 : 0,
         balance_after: profAfter?.credits ?? 0,
-        event_type: usedCredit ? "consult_paid" : welcomeFreeAi ? "consult_welcome_free" : "consult_free",
+        event_type: usedCredit ? "consult_paid" : "consult_free",
         summary,
         ref_table: "reading_consults",
         ref_id: row.id,

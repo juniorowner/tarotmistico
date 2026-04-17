@@ -5,6 +5,7 @@ import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
+import { markGuestOnceConsumedLocally, requestGuestInterpretationOnce } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +18,8 @@ interface AIInterpretationProps {
   consultationId: string | null;
   consultCommitLoading: boolean;
   consultCommitError: string | null;
+  guestMode?: boolean;
+  onGuestConsumed?: () => void;
 }
 
 type ErrorFooter = "quota" | "included" | null;
@@ -29,6 +32,8 @@ const AIInterpretation = ({
   consultationId,
   consultCommitLoading,
   consultCommitError,
+  guestMode = false,
+  onGuestConsumed,
 }: AIInterpretationProps) => {
   const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
   const [interpretation, setInterpretation] = useState<string | null>(null);
@@ -40,17 +45,17 @@ const AIInterpretation = ({
 
   const handleInterpret = async (opts?: { replaceExisting?: boolean }) => {
     if (authLoading) return;
-    if (!user) {
+    if (!user && !guestMode) {
       trackEvent("ai_interpretation_auth_required");
       openAuthDialog(
         "Inicie sessão para ver a interpretação por IA. A consulta grátis diária e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
       );
       return;
     }
-    if (consultCommitLoading || !consultationId) {
+    if (!guestMode && (consultCommitLoading || !consultationId)) {
       return;
     }
-    if (consultCommitError) {
+    if (!guestMode && consultCommitError) {
       return;
     }
     if (userQuestionFailsSafetyPolicy(question)) {
@@ -68,30 +73,51 @@ const AIInterpretation = ({
     setErrorFooter(null);
     setQuotaHint(null);
     try {
-      const result = await requestAIInterpretation(
-        {
-          spreadId,
+      if (guestMode) {
+        const result = await requestGuestInterpretationOnce({
           spreadName,
           labels,
           cards,
           question: question.trim() || undefined,
-          consultationId,
-          replaceExisting: opts?.replaceExisting === true,
-        },
-        { session }
-      );
-      setInterpretation(result.interpretation);
-      trackEvent("ai_interpretation_success", {
-        used_credit: result.used_credit ?? null,
-      });
-      await refreshAiQuota();
-      if (result.used_credit) {
-        setQuotaHint("Esta consulta usou 1 crédito comprado (contabilizado ao concluir a tiragem).");
-      } else if (typeof result.free_remaining_today === "number") {
-        setQuotaHint(`Consultas grátis restantes hoje: ${result.free_remaining_today}.`);
+        });
+        setInterpretation(result.interpretation);
+        markGuestOnceConsumedLocally();
+        onGuestConsumed?.();
+        setQuotaHint("Consulta completa grátis utilizada neste dispositivo. Nas próximas, faça login.");
+      } else {
+        const result = await requestAIInterpretation(
+          {
+            spreadId,
+            spreadName,
+            labels,
+            cards,
+            question: question.trim() || undefined,
+            consultationId: consultationId as string,
+            replaceExisting: opts?.replaceExisting === true,
+          },
+          { session }
+        );
+        setInterpretation(result.interpretation);
+        trackEvent("ai_interpretation_success", {
+          used_credit: result.used_credit ?? null,
+        });
+        await refreshAiQuota();
+        if (result.used_credit) {
+          setQuotaHint("Esta consulta usou 1 crédito comprado (contabilizado ao concluir a tiragem).");
+        } else if (typeof result.free_remaining_today === "number") {
+          setQuotaHint(`Consultas grátis restantes hoje: ${result.free_remaining_today}.`);
+        }
       }
     } catch (err) {
       const e = err as Error & { code?: string; credits?: number; hint?: string };
+      if (guestMode) {
+        if (e.code === "GUEST_ALREADY_USED" || e.message.includes("non-2xx")) {
+          onGuestConsumed?.();
+          openAuthDialog("A consulta completa grátis deste dispositivo já foi usada. Entre ou crie conta para continuar.");
+        }
+        setError("A consulta grátis deste dispositivo já foi usada ou não pôde ser concluída sem login.");
+        return;
+      }
       if (e.message === "AUTH_REQUIRED" || e.code === "AUTH_REQUIRED") {
         openAuthDialog(
           "Inicie sessão para ver a interpretação por IA. A consulta grátis diária e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
@@ -165,12 +191,11 @@ const AIInterpretation = ({
         </p>
       )}
       <p className="text-xs text-center text-muted-foreground font-body mb-4 px-2 leading-relaxed">
-        Conta necessária. O baralho tem <strong className="text-foreground">78 cartas</strong>{" "}
-        (Arcanos Maiores e Menores).{" "}
-        Na primeira vez, você recebe <strong className="text-foreground">1 consulta completa grátis</strong> com IA.{" "}
-        Ao terminar a tiragem (todas as cartas reveladas), conta uma <strong className="text-foreground">consulta</strong>:{" "}
-        <strong className="text-foreground">1 grátis por dia</strong>, depois{" "}
-        <strong className="text-foreground">1 crédito por consulta</strong>. A interpretação por IA não cobra de novo.
+        O baralho tem <strong className="text-foreground">78 cartas</strong> (Arcanos Maiores e Menores).{" "}
+        Sem login, o dispositivo tem <strong className="text-foreground">1 consulta completa grátis com IA</strong>.{" "}
+        Depois disso, é necessário login/cadastro. Logado, cada dia inclui{" "}
+        <strong className="text-foreground">1 consulta grátis com IA</strong>; após o limite diário,{" "}
+        <strong className="text-foreground">1 crédito por consulta</strong>.
       </p>
 
       {user && consultCommitLoading && (
@@ -201,12 +226,7 @@ const AIInterpretation = ({
             whileHover={{ scale: authLoading ? 1 : 1.03 }}
             whileTap={{ scale: authLoading ? 1 : 0.97 }}
             onClick={() => void handleInterpret()}
-            disabled={
-              authLoading ||
-              consultCommitLoading ||
-              !consultationId ||
-              !!consultCommitError
-            }
+            disabled={authLoading || (!guestMode && (consultCommitLoading || !consultationId || !!consultCommitError))}
             className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
           >
             <Sparkles className="w-4 h-4" />
@@ -308,7 +328,7 @@ const AIInterpretation = ({
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              disabled={isLoading}
+              disabled={isLoading || guestMode}
               onClick={() => void handleInterpret({ replaceExisting: true })}
               className="mt-3 w-full font-display tracking-[0.12em] uppercase text-xs px-4 py-3 rounded-lg bg-primary/15 text-primary border border-primary/35 hover:bg-primary/25 transition-all disabled:opacity-50"
             >

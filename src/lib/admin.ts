@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from "@supabase/supabase-js";
 
 export interface AdminUser {
   id: string;
@@ -53,22 +54,44 @@ export interface AdminUserDetailResponse {
   consultations: AdminConsultation[];
 }
 
+function toAdminErrorMessage(error: unknown): string {
+  if (error instanceof FunctionsHttpError) {
+    return "A função admin respondeu com erro (HTTP). Verifique a chave e os logs da função.";
+  }
+  if (error instanceof FunctionsFetchError) {
+    return "Falha de rede ao chamar a função admin. Verifique deploy/URL do Supabase.";
+  }
+  if (error instanceof FunctionsRelayError) {
+    return "Serviço de funções indisponível no momento. Tente novamente.";
+  }
+  if (error instanceof Error) return error.message;
+  return "Falha ao carregar dados do admin.";
+}
+
 export async function fetchAdminOverview(adminKey: string): Promise<AdminOverviewResponse> {
-  const { data, error } = await supabase.functions.invoke("admin-overview", {
-    headers: { "x-admin-key": adminKey },
-  });
-  if (error) throw new Error(error.message || "Falha ao carregar painel admin.");
-  return data as AdminOverviewResponse;
+  try {
+    const { data, error } = await supabase.functions.invoke("admin-overview", {
+      headers: { "x-admin-key": adminKey },
+    });
+    if (error) throw error;
+    return data as AdminOverviewResponse;
+  } catch (error) {
+    throw new Error(toAdminErrorMessage(error));
+  }
 }
 
 export async function fetchAdminUserDetail(
   adminKey: string,
   userId: string
 ): Promise<AdminUserDetailResponse> {
-  const { data, error } = await supabase.functions.invoke("admin-user-detail", {
-    headers: { "x-admin-key": adminKey },
-    body: { user_id: userId },
-  });
-  if (error) throw new Error(error.message || "Falha ao carregar detalhe do utilizador.");
-  return data as AdminUserDetailResponse;
+  try {
+    const { data, error } = await supabase.functions.invoke("admin-user-detail", {
+      headers: { "x-admin-key": adminKey },
+      body: { user_id: userId },
+    });
+    if (error) throw error;
+    return data as AdminUserDetailResponse;
+  } catch (error) {
+    throw new Error(toAdminErrorMessage(error));
+  }
 }

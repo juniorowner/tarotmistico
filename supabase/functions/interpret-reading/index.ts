@@ -240,17 +240,7 @@ serve(async (req) => {
       );
     }
 
-    // Regra de produto: IA disponível em consulta paga ou na oferta única de boas-vindas.
-    if (!consult.used_credit && !consult.welcome_free_ai) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "Interpretação por IA disponível para consultas com crédito ou na primeira consulta completa grátis de boas-vindas.",
-          code: "AI_REQUIRES_CREDIT",
-        }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Regra de produto: consulta registada (grátis do dia ou paga) pode gerar IA.
 
     let { data: priorAi } = await admin
       .from("ai_readings")

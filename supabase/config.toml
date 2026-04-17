@@ -28,3 +28,12 @@ verify_jwt = false
 
 [functions.send-daily-reminders]
 verify_jwt = false
+
+[functions.admin-overview]
+verify_jwt = false
+
+[functions.admin-user-detail]
+verify_jwt = false
+
+[functions.guest-interpret-once]
+verify_jwt = false

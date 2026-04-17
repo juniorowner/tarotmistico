@@ -28,26 +28,7 @@ import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
 import { toast } from "sonner";
-
-const FIRST_GUEST_READING_KEY = "tarot:first-guest-reading-completed:v1";
-
-function hasCompletedFirstGuestReading(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(FIRST_GUEST_READING_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markFirstGuestReadingCompleted() {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(FIRST_GUEST_READING_KEY, "1");
-  } catch {
-    // Ignora falhas de storage (modo privado, bloqueios, etc.)
-  }
-}
+import { hasGuestOnceBeenConsumedLocally, markGuestOnceConsumedLocally } from "@/lib/guestOnce";
 
 function suitLabelPt(suit: NonNullable<DealtTarotCard["suit"]>): string {
   const labels = { cups: "Copas", swords: "Espadas", pentacles: "Ouros", wands: "Paus" } as const;
@@ -104,7 +85,7 @@ const TarotSpread = () => {
   const [consultWelcomeFreeAi, setConsultWelcomeFreeAi] = useState(false);
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
   const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
-  const [guestReadingAlreadyUsed, setGuestReadingAlreadyUsed] = useState(hasCompletedFirstGuestReading);
+  const [guestReadingAlreadyUsed, setGuestReadingAlreadyUsed] = useState(hasGuestOnceBeenConsumedLocally);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
   const quotaExhausted =
@@ -184,17 +165,6 @@ const TarotSpread = () => {
   };
 
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
-
-  useEffect(() => {
-    if (allRevealed && !user && !guestReadingAlreadyUsed) {
-      markFirstGuestReadingCompleted();
-      setGuestReadingAlreadyUsed(true);
-      trackEvent("guest_first_reading_completed");
-      toast.message("Consulta gratuita concluída.", {
-        description: "Para fazer novas leituras, entre ou crie conta.",
-      });
-    }
-  }, [allRevealed, user, guestReadingAlreadyUsed]);
 
   useEffect(() => {
     if (!allRevealed || !user || !selectedSpread || !readingDedupeKey || cards.length === 0) {
@@ -438,7 +408,7 @@ const TarotSpread = () => {
               </DialogContent>
             </Dialog>
 
-            {allRevealed && selectedSpread && (consultUsedCredit === true || consultWelcomeFreeAi) && (
+            {allRevealed && selectedSpread && (
               <AIInterpretation
                 spreadId={selectedSpread.id}
                 spreadName={selectedSpread.name}
@@ -447,22 +417,18 @@ const TarotSpread = () => {
                 consultationId={consultationId}
                 consultCommitLoading={consultCommitLoading}
                 consultCommitError={consultCommitError}
+                guestMode={!user}
+                onGuestConsumed={() => {
+                  if (!guestReadingAlreadyUsed) {
+                    markGuestOnceConsumedLocally();
+                    setGuestReadingAlreadyUsed(true);
+                    trackEvent("guest_first_reading_completed");
+                    toast.message("Consulta completa grátis concluída.", {
+                      description: "Para novas consultas sem crédito, entre ou crie conta.",
+                    });
+                  }
+                }}
               />
-            )}
-
-            {allRevealed && consultUsedCredit === false && !consultWelcomeFreeAi && (
-              <div className="mx-auto mb-6 max-w-2xl rounded-xl border border-border bg-card/40 p-4 text-center">
-                <p className="text-sm font-body text-muted-foreground leading-relaxed">
-                  Nesta modalidade gratuita, você pode abrir as cartas e fazer a leitura manual. A interpretação completa
-                  por IA fica disponível apenas em consultas com crédito.
-                </p>
-                <Link
-                  to="/creditos"
-                  className="mt-3 inline-flex text-sm font-display uppercase tracking-wider text-primary hover:underline"
-                >
-                  Ver créditos de IA
-                </Link>
-              </div>
             )}
 
             {allRevealed && (
