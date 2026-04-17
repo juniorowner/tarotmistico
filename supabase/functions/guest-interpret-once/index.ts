@@ -157,6 +157,20 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
       );
     }
 
+    // Guarda histórico de perguntas anónimas para análise interna.
+    const { error: guestLogErr } = await admin.from("guest_questions").insert({
+      token_hash: tokenHash,
+      fingerprint_hash: fpHash,
+      spread_name: spreadName,
+      question: question || null,
+      cards,
+      interpretation,
+      model_used: model,
+    });
+    if (guestLogErr) {
+      console.error("guest_questions insert error:", guestLogErr);
+    }
+
     return new Response(
       JSON.stringify({ interpretation, model, guest_consumed: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
