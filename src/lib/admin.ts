@@ -65,12 +65,10 @@ export async function fetchAdminUserDetail(
   adminKey: string,
   userId: string
 ): Promise<AdminUserDetailResponse> {
-  const { data, error } = await supabase.functions.invoke(
-    `admin-user-detail?user_id=${encodeURIComponent(userId)}`,
-    {
-      headers: { "x-admin-key": adminKey },
-    }
-  );
+  const { data, error } = await supabase.functions.invoke("admin-user-detail", {
+    headers: { "x-admin-key": adminKey },
+    body: { user_id: userId },
+  });
   if (error) throw new Error(error.message || "Falha ao carregar detalhe do utilizador.");
   return data as AdminUserDetailResponse;
 }

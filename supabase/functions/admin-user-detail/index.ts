@@ -29,7 +29,15 @@ serve(async (req) => {
       });
     }
 
-    const userId = new URL(req.url).searchParams.get("user_id") ?? "";
+    let userId = new URL(req.url).searchParams.get("user_id") ?? "";
+    if (!userId && req.method === "POST") {
+      try {
+        const body = (await req.json()) as { user_id?: string };
+        userId = body.user_id ?? "";
+      } catch {
+        // ignore malformed json and keep validation below
+      }
+    }
     if (!userId) {
       return new Response(JSON.stringify({ error: "user_id obrigatório." }), {
         status: 400,
