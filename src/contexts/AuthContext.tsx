@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AiQuotaResponse } from "@/lib/aiQuota";
 import { fetchAiQuota } from "@/lib/aiQuota";
 
+const POST_LOGIN_REDIRECT_FLAG = "tarot:post-login-redirected:v1";
+
 type AuthContextValue = {
   session: Session | null;
   user: User | null;
@@ -72,8 +74,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
+    } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (
+        event === "SIGNED_IN" &&
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/bem-vindo-creditos"
+      ) {
+        try {
+          const redirected = window.sessionStorage.getItem(POST_LOGIN_REDIRECT_FLAG) === "1";
+          if (!redirected) {
+            window.sessionStorage.setItem(POST_LOGIN_REDIRECT_FLAG, "1");
+            window.location.assign("/bem-vindo-creditos");
+          }
+        } catch {
+          window.location.assign("/bem-vindo-creditos");
+        }
+      }
+      if (event === "SIGNED_OUT" && typeof window !== "undefined") {
+        try {
+          window.sessionStorage.removeItem(POST_LOGIN_REDIRECT_FLAG);
+        } catch {
+          // ignore
+        }
+      }
     });
 
     return () => subscription.unsubscribe();

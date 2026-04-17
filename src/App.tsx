@@ -8,9 +8,11 @@ import { HelmetProvider } from "react-helmet-async";
 import SplashScreen from "./components/SplashScreen";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AuthDialog } from "./components/AuthDialog";
+import { ScrollToTop } from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Diary from "./pages/Diary";
 import Creditos from "./pages/Creditos";
+import BoasVindasCreditos from "./pages/BoasVindasCreditos";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import NotFound from "./pages/NotFound";
 
@@ -27,13 +29,15 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <AuthDialog />
             {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
             <BrowserRouter>
+              <ScrollToTop />
+              <AuthDialog />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/diario" element={<Diary />} />
                 <Route path="/creditos" element={<Creditos />} />
+                <Route path="/bem-vindo-creditos" element={<BoasVindasCreditos />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
