@@ -174,6 +174,17 @@ const TarotSpread = () => {
 
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
 
+  /** Alinha GA com o backend: só após revelar todas as cartas (antes da IA / commit). */
+  useEffect(() => {
+    if (!allRevealed || !hasStarted || !selectedSpread || cards.length === 0 || !readingDedupeKey) return;
+    trackEvent("reading_all_cards_revealed", {
+      spread_id: selectedSpread.id,
+      spread_name: selectedSpread.name,
+      card_count: cards.length,
+      is_guest: !user,
+    });
+  }, [allRevealed, hasStarted, selectedSpread, cards.length, readingDedupeKey, user]);
+
   useEffect(() => {
     if (!allRevealed || !user || !selectedSpread || !readingDedupeKey || cards.length === 0) {
       return;

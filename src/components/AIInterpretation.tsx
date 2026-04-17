@@ -67,6 +67,7 @@ const AIInterpretation = ({
       spread_id: spreadId,
       has_question: question.trim().length > 0,
       replace_existing: opts?.replaceExisting === true,
+      guest_mode: guestMode,
     });
     setIsLoading(true);
     setError(null);
@@ -81,6 +82,10 @@ const AIInterpretation = ({
           question: question.trim() || undefined,
         });
         setInterpretation(result.interpretation);
+        trackEvent("guest_interpretation_success", {
+          spread_id: spreadId,
+          has_question: question.trim().length > 0,
+        });
         markGuestOnceConsumedLocally();
         onGuestConsumed?.();
         setQuotaHint("Consulta completa grátis utilizada neste dispositivo. Nas próximas, faça login.");
@@ -99,6 +104,7 @@ const AIInterpretation = ({
         );
         setInterpretation(result.interpretation);
         trackEvent("ai_interpretation_success", {
+          spread_id: spreadId,
           used_credit: result.used_credit ?? null,
         });
         await refreshAiQuota();
@@ -112,6 +118,7 @@ const AIInterpretation = ({
       const e = err as Error & { code?: string; credits?: number; hint?: string };
       if (guestMode) {
         if (e.code === "AI_TRUNCATED") {
+          trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "truncated" });
           setError(
             e.message ||
               "A leitura veio incompleta. Toque em «Gerar interpretação» de novo — a consulta grátis ainda não foi contabilizada neste dispositivo."
@@ -119,6 +126,7 @@ const AIInterpretation = ({
           return;
         }
         if (e.code === "GUEST_LOG_FAILED") {
+          trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "log_failed" });
           setError(
             e.message ||
               "O servidor não conseguiu guardar o registo da consulta. Tente de novo; se persistir, confirme no Supabase a tabela guest_questions e as migrations."
@@ -126,11 +134,16 @@ const AIInterpretation = ({
           return;
         }
         if (e.code === "GUEST_ALREADY_USED") {
+          trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "already_used" });
           onGuestConsumed?.();
           openAuthDialog("A consulta completa grátis deste dispositivo já foi usada. Entre ou crie conta para continuar.");
           setError("A consulta grátis deste dispositivo já foi usada. Faça login para continuar.");
           return;
         }
+        trackEvent("guest_interpretation_failed", {
+          spread_id: spreadId,
+          reason: e.code || "unknown",
+        });
         setError(e.message || "Não foi possível concluir a interpretação grátis. Tente de novo ou faça login.");
         return;
       }
