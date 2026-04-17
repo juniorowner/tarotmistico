@@ -14,6 +14,8 @@ import Index from "./pages/Index";
 import Diary from "./pages/Diary";
 import Creditos from "./pages/Creditos";
 import BoasVindasCreditos from "./pages/BoasVindasCreditos";
+import Admin from "./pages/Admin";
+import AdminUserDetail from "./pages/AdminUserDetail";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +42,8 @@ const App = () => {
                 <Route path="/diario" element={<Diary />} />
                 <Route path="/creditos" element={<Creditos />} />
                 <Route path="/bem-vindo-creditos" element={<BoasVindasCreditos />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/user/:userId" element={<AdminUserDetail />} />
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
