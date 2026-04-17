@@ -6,6 +6,7 @@ import { drawReadingCards } from "@/lib/shuffleDeck";
 import { SpreadType } from "@/data/spreadTypes";
 import { saveDiaryEntry } from "@/lib/diary";
 import { commitReadingConsult } from "@/lib/readingConsult";
+import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsNarrowViewport } from "@/hooks/use-mobile";
 import {
@@ -94,12 +95,14 @@ const TarotSpread = () => {
     if (!selectedSpread) return;
     if (authLoading) return;
     if (!user) {
+      trackEvent("auth_required_start_reading");
       openAuthDialog(
         "Inicie sessão para realizar uma leitura. As 3 consultas grátis por dia (UTC) e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
       );
       return;
     }
     if (quotaExhausted) {
+      trackEvent("reading_start_blocked_quota");
       toast.error("Limite de consultas grátis de hoje atingido e sem créditos.", {
         description: (
           <Link to="/creditos" className="text-primary underline underline-offset-2 font-body">
@@ -110,6 +113,11 @@ const TarotSpread = () => {
       return;
     }
     const selected = dealSpread(selectedSpread.cardCount);
+    trackEvent("reading_started", {
+      spread_id: selectedSpread.id,
+      spread_name: selectedSpread.name,
+      card_count: selectedSpread.cardCount,
+    });
     const n = selectedSpread.cardCount;
     setReadingDedupeKey(crypto.randomUUID());
     setConsultationId(null);
@@ -169,16 +177,22 @@ const TarotSpread = () => {
         if (cancelled) return;
         setConsultationId(res.consultation_id);
         setConsultUsedCredit(res.used_credit);
+        trackEvent("consultation_committed", {
+          used_credit: res.used_credit,
+          free_remaining_today: res.free_remaining_today,
+        });
         await refreshAiQuota();
       } catch (err) {
         if (cancelled) return;
         const e = err as Error & { code?: string };
         if (e.code === "QUOTA_EXCEEDED") {
+          trackEvent("consultation_commit_quota_exceeded");
           setConsultCommitError(
             e.message ||
               "Limite de consultas grátis hoje atingido. Compre créditos ou volte amanhã."
           );
         } else {
+          trackEvent("consultation_commit_failed");
           setConsultCommitError(e instanceof Error ? e.message : "Não foi possível registar a consulta.");
         }
         setConsultationId(null);

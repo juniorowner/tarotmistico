@@ -13,6 +13,7 @@ import {
   processMercadoPagoPayment,
 } from "@/lib/payments";
 import { enableDailyPush, disableDailyPush } from "@/lib/webPush";
+import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SEO from "@/components/SEO";
@@ -162,6 +163,7 @@ const Creditos = () => {
 
   const handleBuy = async (packageId: CreditPackageId) => {
     if (!user) {
+      trackEvent("credits_buy_auth_required");
       openAuthDialog("Inicie sessão para comprar créditos de interpretação por IA.");
       return;
     }
@@ -170,6 +172,11 @@ const Creditos = () => {
       const checkout = await createMercadoPagoCheckout(packageId);
       const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
       if (!pkg) throw new Error("Pacote inválido.");
+      trackEvent("pix_payment_requested", {
+        package_id: packageId,
+        credits: pkg.credits,
+        amount_brl: pkg.amountCents / 100,
+      });
       setCheckoutOrderId(checkout.orderId ?? null);
       setCheckoutStatus(null);
       setCheckoutQrCode(null);
@@ -195,13 +202,16 @@ const Creditos = () => {
       setCheckoutQrImage(res.qr_code_base64 ?? null);
       setCheckoutOpen(true);
       if (String(res.status || "").toLowerCase() === "approved") {
+        trackEvent("pix_payment_approved", { package_id: packageId });
         toast.success("Pagamento aprovado.");
         void refreshAiQuota();
         void refreshOrders();
       } else {
+        trackEvent("pix_qr_generated", { package_id: packageId });
         toast.message("Pagamento Pix gerado. Conclua com o QR Code abaixo.");
       }
     } catch (e) {
+      trackEvent("pix_payment_failed");
       toast.error(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
     } finally {
       setPaying(null);
@@ -245,6 +255,7 @@ const Creditos = () => {
     if (!checkoutQrCode) return;
     try {
       await navigator.clipboard.writeText(checkoutQrCode);
+      trackEvent("pix_code_copied");
       toast.success("Código Pix copiado.");
     } catch {
       toast.error("Não foi possível copiar automaticamente.");
@@ -263,6 +274,7 @@ const Creditos = () => {
         const status = String(res.status || "").toLowerCase();
         setCheckoutStatus(status || null);
         if (status === "approved" || status === "authorized") {
+          trackEvent("pix_payment_approved_polling");
           toast.success("Pagamento confirmado! Créditos atualizados.");
           void refreshAiQuota();
           void refreshOrders();

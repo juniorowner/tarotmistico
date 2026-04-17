@@ -5,6 +5,7 @@ import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
+import { trackEvent } from "@/lib/analytics";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -40,6 +41,7 @@ const AIInterpretation = ({
   const handleInterpret = async (opts?: { replaceExisting?: boolean }) => {
     if (authLoading) return;
     if (!user) {
+      trackEvent("ai_interpretation_auth_required");
       openAuthDialog(
         "Inicie sessão para ver a interpretação por IA. As 3 consultas grátis por dia e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
       );
@@ -52,9 +54,15 @@ const AIInterpretation = ({
       return;
     }
     if (userQuestionFailsSafetyPolicy(question)) {
+      trackEvent("ai_interpretation_blocked_safety");
       toast.error(unsafeUserContentMessage());
       return;
     }
+    trackEvent("ai_interpretation_requested", {
+      spread_id: spreadId,
+      has_question: question.trim().length > 0,
+      replace_existing: opts?.replaceExisting === true,
+    });
     setIsLoading(true);
     setError(null);
     setErrorFooter(null);
@@ -73,6 +81,9 @@ const AIInterpretation = ({
         { session }
       );
       setInterpretation(result.interpretation);
+      trackEvent("ai_interpretation_success", {
+        used_credit: result.used_credit ?? null,
+      });
       await refreshAiQuota();
       if (result.used_credit) {
         setQuotaHint("Esta consulta usou 1 crédito comprado (contabilizado ao concluir a tiragem).");
@@ -96,6 +107,7 @@ const AIInterpretation = ({
         return;
       }
       if (e.code === "QUOTA_EXCEEDED") {
+        trackEvent("ai_interpretation_quota_exceeded");
         setError(
           e.message ||
             "Limite diário atingido. Compre créditos para continuar hoje ou volte amanhã."
@@ -120,9 +132,11 @@ const AIInterpretation = ({
         return;
       }
       if (e.code === "UNSAFE_CONTENT") {
+        trackEvent("ai_interpretation_blocked_safety");
         toast.error(e.message || unsafeUserContentMessage());
         return;
       }
+      trackEvent("ai_interpretation_failed");
       void refreshAiQuota();
       if (e.hint) {
         toast.message(e.hint);
