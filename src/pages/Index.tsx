@@ -5,8 +5,10 @@ import TarotSpread from "@/components/TarotSpread";
 import { UserMenu } from "@/components/UserMenu";
 import { SiteNavBar } from "@/components/SiteNavBar";
 import SEO from "@/components/SEO";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
+  const { user, isLoading } = useAuth();
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -40,13 +42,15 @@ const Index = () => {
             <BookOpen className="w-4 h-4" />
             Diário
           </Link>
-          <Link
-            to="/creditos"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 backdrop-blur border border-border hover:border-primary/40 text-primary transition-all font-display text-xs tracking-wider uppercase"
-          >
-            <Sparkles className="w-4 h-4" />
-            Créditos
-          </Link>
+          {!isLoading && user && (
+            <Link
+              to="/creditos"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 backdrop-blur border border-border hover:border-primary/40 text-primary transition-all font-display text-xs tracking-wider uppercase"
+            >
+              <Sparkles className="w-4 h-4" />
+              Créditos
+            </Link>
+          )}
           <UserMenu />
         </SiteNavBar>
         <Hero />

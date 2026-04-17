@@ -3,10 +3,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import SplashScreen from "./components/SplashScreen";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AuthDialog } from "./components/AuthDialog";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { RouteAnalytics } from "./components/RouteAnalytics";
@@ -20,6 +20,22 @@ import RecuperarSenha from "./pages/RecuperarSenha";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+/** Pacotes e preços só para sessão iniciada (evita assustar visitantes). */
+function CreditosRouteGate() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground font-body">A carregar…</p>
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+  return <Creditos />;
+}
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -40,7 +56,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/diario" element={<Diary />} />
-                <Route path="/creditos" element={<Creditos />} />
+                <Route path="/creditos" element={<CreditosRouteGate />} />
                 <Route path="/bem-vindo-creditos" element={<BoasVindasCreditos />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/user/:userId" element={<AdminUserDetail />} />
