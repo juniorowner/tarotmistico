@@ -53,6 +53,29 @@ function loadMercadoPagoSdk() {
   return mpSdkLoader;
 }
 
+function hideMercadoPagoEmailField(containerId: string) {
+  const root = document.getElementById(containerId);
+  if (!root) return;
+  const selectors = [
+    'input[type="email"]',
+    'input[name*="email" i]',
+    'input[id*="email" i]',
+  ];
+  for (const sel of selectors) {
+    const input = root.querySelector(sel) as HTMLElement | null;
+    if (!input) continue;
+    const wrapper =
+      input.closest('[data-testid*="email" i]') ||
+      input.closest("label") ||
+      input.parentElement ||
+      input;
+    if (wrapper instanceof HTMLElement) {
+      wrapper.style.display = "none";
+    }
+    break;
+  }
+}
+
 function translatePaymentStatus(statusRaw: string): string {
   const status = String(statusRaw || "").toLowerCase();
   const labels: Record<string, string> = {
@@ -68,7 +91,7 @@ function translatePaymentStatus(statusRaw: string): string {
     paid: "Pago",
     failed: "Falhou",
   };
-  return labels[status] ?? (status ? status.replaceAll("_", " ") : "Desconhecido");
+  return labels[status] ?? (status ? status.replace(/_/g, " ") : "Desconhecido");
 }
 
 const Creditos = () => {
@@ -272,6 +295,7 @@ const Creditos = () => {
           initialization: {
             amount: checkoutAmount,
             preferenceId: checkoutPreferenceId,
+            payer: user?.email ? { email: user.email } : undefined,
           },
           customization: {
             paymentMethods: {
@@ -281,10 +305,17 @@ const Creditos = () => {
           locale: "pt-BR",
           callbacks: {
             onSubmit: (payload: { formData?: Record<string, unknown> } | Record<string, unknown>) => {
-              const formData =
+              const baseFormData =
                 payload && typeof payload === "object" && "formData" in payload
                   ? ((payload as { formData?: Record<string, unknown> }).formData ?? {})
                   : (payload as Record<string, unknown>);
+              const formData = {
+                ...baseFormData,
+                payer: {
+                  ...((baseFormData.payer as Record<string, unknown> | undefined) ?? {}),
+                  ...(user?.email ? { email: user.email } : {}),
+                },
+              };
               return processMercadoPagoPayment(formData, {
                 creditOrderId: checkoutOrderId ?? undefined,
               }).then((res) => {
@@ -306,7 +337,10 @@ const Creditos = () => {
                 throw new Error("Pagamento não aprovado. Tente outro meio.");
               });
             },
-            onReady: () => setCheckoutError(null),
+            onReady: () => {
+              setCheckoutError(null);
+              if (user?.email) hideMercadoPagoEmailField(PAYMENT_BRICK_CONTAINER_ID);
+            },
             onError: (err: unknown) =>
               setCheckoutError(
                 err instanceof Error
@@ -335,6 +369,7 @@ const Creditos = () => {
     checkoutPreferenceId,
     checkoutOrderId,
     checkoutAmount,
+    user?.email,
     refreshAiQuota,
   ]);
 
