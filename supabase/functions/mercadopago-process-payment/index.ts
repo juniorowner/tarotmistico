@@ -121,6 +121,12 @@ serve(async (req) => {
         status: String(mpData?.status ?? ""),
         payment_id: mpData?.id ?? null,
         status_detail: mpData?.status_detail ?? null,
+        qr_code:
+          mpData?.point_of_interaction?.transaction_data?.qr_code ??
+          null,
+        qr_code_base64:
+          mpData?.point_of_interaction?.transaction_data?.qr_code_base64 ??
+          null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

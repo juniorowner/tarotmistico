@@ -18,6 +18,8 @@ export type MercadoPagoProcessResult = {
   status: string;
   payment_id: number | null;
   status_detail?: string | null;
+  qr_code?: string | null;
+  qr_code_base64?: string | null;
 };
 
 export type MercadoPagoPaymentStatus = {

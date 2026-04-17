@@ -18,63 +18,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import SEO from "@/components/SEO";
 
 const FREE_PER_DAY = 3;
-const PAYMENT_BRICK_CONTAINER_ID = "mp-payment-brick-container";
-const STATUS_BRICK_CONTAINER_ID = "mp-status-brick-container";
-
-type MercadoPagoCtor = new (
-  key: string,
-  options?: { locale?: string }
-) => {
-  bricks: () => {
-    create: (
-      brick: string,
-      containerId: string,
-      settings: Record<string, unknown>
-    ) => Promise<{ unmount?: () => void }>;
-  };
-};
-
-let mpSdkLoader: Promise<void> | null = null;
-
-function loadMercadoPagoSdk() {
-  if ((window as { MercadoPago?: MercadoPagoCtor }).MercadoPago) {
-    return Promise.resolve();
-  }
-  if (!mpSdkLoader) {
-    mpSdkLoader = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://sdk.mercadopago.com/js/v2";
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Não foi possível carregar o SDK do Mercado Pago."));
-      document.head.appendChild(script);
-    });
-  }
-  return mpSdkLoader;
-}
-
-function hideMercadoPagoEmailField(containerId: string) {
-  const root = document.getElementById(containerId);
-  if (!root) return;
-  const selectors = [
-    'input[type="email"]',
-    'input[name*="email" i]',
-    'input[id*="email" i]',
-  ];
-  for (const sel of selectors) {
-    const input = root.querySelector(sel) as HTMLElement | null;
-    if (!input) continue;
-    const wrapper =
-      input.closest('[data-testid*="email" i]') ||
-      input.closest("label") ||
-      input.parentElement ||
-      input;
-    if (wrapper instanceof HTMLElement) {
-      wrapper.style.display = "none";
-    }
-    break;
-  }
-}
 
 function translatePaymentStatus(statusRaw: string): string {
   const status = String(statusRaw || "").toLowerCase();
@@ -100,13 +43,12 @@ const Creditos = () => {
   const [enablingPush, setEnablingPush] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [checkoutPreferenceId, setCheckoutPreferenceId] = useState<string | null>(null);
   const [checkoutOrderId, setCheckoutOrderId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [checkoutAmount, setCheckoutAmount] = useState<number | null>(null);
-  const [checkoutStep, setCheckoutStep] = useState<"payment" | "status">("payment");
   const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
+  const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null);
+  const [checkoutQrCode, setCheckoutQrCode] = useState<string | null>(null);
+  const [checkoutQrImage, setCheckoutQrImage] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orders, setOrders] = useState<
@@ -214,16 +156,40 @@ const Creditos = () => {
     try {
       const checkout = await createMercadoPagoCheckout(packageId);
       const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
-      setCheckoutUrl(checkout.initPoint);
-      setCheckoutPreferenceId(checkout.preferenceId ?? null);
+      if (!pkg) throw new Error("Pacote inválido.");
       setCheckoutOrderId(checkout.orderId ?? null);
-      setCheckoutAmount(pkg ? pkg.amountCents / 100 : null);
+      setCheckoutStatus(null);
+      setCheckoutQrCode(null);
+      setCheckoutQrImage(null);
       setCheckoutError(null);
-      setCheckoutStep("payment");
       setCheckoutPaymentId(null);
+      const res = await processMercadoPagoPayment(
+        {
+          transaction_amount: pkg.amountCents / 100,
+          payment_method_id: "pix",
+          description: `${pkg.credits} créditos — Tarot Místico`,
+          payer: user.email ? { email: user.email } : {},
+        },
+        {
+          creditOrderId: checkout.orderId ?? undefined,
+        }
+      );
+      const paymentId = res.payment_id != null ? String(res.payment_id) : null;
+      if (!paymentId) throw new Error("Pagamento criado sem ID. Tente novamente.");
+      setCheckoutPaymentId(paymentId);
+      setCheckoutStatus(res.status ?? null);
+      setCheckoutQrCode(res.qr_code ?? null);
+      setCheckoutQrImage(res.qr_code_base64 ?? null);
       setCheckoutOpen(true);
+      if (String(res.status || "").toLowerCase() === "approved") {
+        toast.success("Pagamento aprovado.");
+        void refreshAiQuota();
+        void refreshOrders();
+      } else {
+        toast.message("Pagamento Pix gerado. Conclua com o QR Code abaixo.");
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao abrir o checkout.");
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
     } finally {
       setPaying(null);
     }
@@ -262,174 +228,18 @@ const Creditos = () => {
     }
   };
 
-  useEffect(() => {
-    if (!checkoutOpen) return;
-    if (checkoutStep !== "payment") return;
-    if (!checkoutPreferenceId) return;
-    if (!checkoutAmount || checkoutAmount <= 0) return;
-
-    const publicKey = (import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY ?? "").trim();
-    if (!publicKey) {
-      setCheckoutError(
-        "Chave pública do Mercado Pago não configurada (VITE_MERCADOPAGO_PUBLIC_KEY)."
-      );
-      return;
+  const handleCopyPixCode = async () => {
+    if (!checkoutQrCode) return;
+    try {
+      await navigator.clipboard.writeText(checkoutQrCode);
+      toast.success("Código Pix copiado.");
+    } catch {
+      toast.error("Não foi possível copiar automaticamente.");
     }
-
-    let active = true;
-    let controller: { unmount?: () => void } | null = null;
-
-    const mount = async () => {
-      try {
-        setCheckoutError(null);
-        await loadMercadoPagoSdk();
-        if (!active) return;
-        const MercadoPago = (window as { MercadoPago?: MercadoPagoCtor }).MercadoPago;
-        if (!MercadoPago) throw new Error("SDK do Mercado Pago indisponível.");
-
-        const host = document.getElementById(PAYMENT_BRICK_CONTAINER_ID);
-        if (host) host.innerHTML = "";
-
-        const mp = new MercadoPago(publicKey, { locale: "pt-BR" });
-        controller = await mp.bricks().create("payment", PAYMENT_BRICK_CONTAINER_ID, {
-          initialization: {
-            amount: checkoutAmount,
-            preferenceId: checkoutPreferenceId,
-            payer: user?.email ? { email: user.email } : undefined,
-          },
-          customization: {
-            paymentMethods: {
-              bankTransfer: ["pix"],
-            },
-          },
-          locale: "pt-BR",
-          callbacks: {
-            onSubmit: (payload: { formData?: Record<string, unknown> } | Record<string, unknown>) => {
-              const baseFormData =
-                payload && typeof payload === "object" && "formData" in payload
-                  ? ((payload as { formData?: Record<string, unknown> }).formData ?? {})
-                  : (payload as Record<string, unknown>);
-              const formData = {
-                ...baseFormData,
-                payer: {
-                  ...((baseFormData.payer as Record<string, unknown> | undefined) ?? {}),
-                  ...(user?.email ? { email: user.email } : {}),
-                },
-              };
-              return processMercadoPagoPayment(formData, {
-                creditOrderId: checkoutOrderId ?? undefined,
-              }).then((res) => {
-                const status = String(res.status || "").toLowerCase();
-                const paymentId = res.payment_id != null ? String(res.payment_id) : "";
-                if (!paymentId) throw new Error("Pagamento criado sem ID. Tente novamente.");
-                setCheckoutPaymentId(paymentId);
-                setCheckoutStep("status");
-                if (status === "pending" || status === "in_process") {
-                  toast.message("Pagamento pendente. Use o QR Code abaixo para concluir.");
-                  return;
-                }
-                if (status === "approved" || status === "authorized") {
-                  toast.success("Pagamento aprovado.");
-                  void refreshAiQuota();
-                  void refreshOrders();
-                  return;
-                }
-                throw new Error("Pagamento não aprovado. Tente outro meio.");
-              });
-            },
-            onReady: () => {
-              setCheckoutError(null);
-              if (user?.email) hideMercadoPagoEmailField(PAYMENT_BRICK_CONTAINER_ID);
-            },
-            onError: (err: unknown) =>
-              setCheckoutError(
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao abrir o checkout no modal. Use o fallback abaixo."
-              ),
-          },
-        });
-      } catch (err) {
-        setCheckoutError(
-          err instanceof Error
-            ? err.message
-            : "Não foi possível iniciar o checkout do Mercado Pago."
-        );
-      }
-    };
-
-    void mount();
-    return () => {
-      active = false;
-      if (controller?.unmount) controller.unmount();
-    };
-  }, [
-    checkoutOpen,
-    checkoutStep,
-    checkoutPreferenceId,
-    checkoutOrderId,
-    checkoutAmount,
-    user?.email,
-    refreshAiQuota,
-  ]);
+  };
 
   useEffect(() => {
-    if (!checkoutOpen) return;
-    if (checkoutStep !== "status") return;
-    if (!checkoutPaymentId) return;
-
-    const publicKey = (import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY ?? "").trim();
-    if (!publicKey) {
-      setCheckoutError(
-        "Chave pública do Mercado Pago não configurada (VITE_MERCADOPAGO_PUBLIC_KEY)."
-      );
-      return;
-    }
-
-    let active = true;
-    let controller: { unmount?: () => void } | null = null;
-
-    const mountStatus = async () => {
-      try {
-        setCheckoutError(null);
-        await loadMercadoPagoSdk();
-        if (!active) return;
-        const MercadoPago = (window as { MercadoPago?: MercadoPagoCtor }).MercadoPago;
-        if (!MercadoPago) throw new Error("SDK do Mercado Pago indisponível.");
-        const host = document.getElementById(STATUS_BRICK_CONTAINER_ID);
-        if (host) host.innerHTML = "";
-        const mp = new MercadoPago(publicKey, { locale: "pt-BR" });
-        controller = await mp.bricks().create("statusScreen", STATUS_BRICK_CONTAINER_ID, {
-          initialization: { paymentId: checkoutPaymentId },
-          locale: "pt-BR",
-          callbacks: {
-            onReady: () => setCheckoutError(null),
-            onError: (err: unknown) =>
-              setCheckoutError(
-                err instanceof Error
-                  ? err.message
-                  : "Erro ao renderizar status do pagamento."
-              ),
-          },
-        });
-      } catch (err) {
-        setCheckoutError(
-          err instanceof Error
-            ? err.message
-            : "Não foi possível carregar a tela de status do pagamento."
-        );
-      }
-    };
-
-    void mountStatus();
-    return () => {
-      active = false;
-      if (controller?.unmount) controller.unmount();
-    };
-  }, [checkoutOpen, checkoutStep, checkoutPaymentId]);
-
-  useEffect(() => {
-    if (!checkoutOpen || checkoutStep !== "status" || !checkoutPaymentId) return;
+    if (!checkoutOpen || !checkoutPaymentId) return;
     let cancelled = false;
     let timer: number | null = null;
 
@@ -438,13 +248,16 @@ const Creditos = () => {
         const res = await getMercadoPagoPaymentStatus(checkoutPaymentId);
         if (cancelled) return;
         const status = String(res.status || "").toLowerCase();
+        setCheckoutStatus(status || null);
         if (status === "approved" || status === "authorized") {
           toast.success("Pagamento confirmado! Créditos atualizados.");
           void refreshAiQuota();
           void refreshOrders();
           setCheckoutOpen(false);
-          setCheckoutStep("payment");
           setCheckoutPaymentId(null);
+          setCheckoutStatus(null);
+          setCheckoutQrCode(null);
+          setCheckoutQrImage(null);
           return;
         }
       } catch {
@@ -458,7 +271,7 @@ const Creditos = () => {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [checkoutOpen, checkoutStep, checkoutPaymentId, refreshAiQuota]);
+  }, [checkoutOpen, checkoutPaymentId, refreshAiQuota, refreshOrders]);
 
   return (
     <>
@@ -688,8 +501,10 @@ const Creditos = () => {
           setCheckoutOpen(open);
           if (!open) {
             setCheckoutOrderId(null);
-            setCheckoutStep("payment");
             setCheckoutPaymentId(null);
+            setCheckoutStatus(null);
+            setCheckoutQrCode(null);
+            setCheckoutQrImage(null);
             setCheckoutError(null);
           }
         }}
@@ -698,30 +513,45 @@ const Creditos = () => {
           <DialogHeader className="p-4 pb-2 border-b border-border/70">
             <DialogTitle>Pagamento seguro</DialogTitle>
             <DialogDescription>
-              Conclua no modal do Mercado Pago. Se não carregar, abra em nova aba.
+              Pague com Pix para liberar os créditos automaticamente.
             </DialogDescription>
           </DialogHeader>
-          {checkoutUrl ? (
-            <div className="px-4 py-4 space-y-3 overflow-y-auto max-h-[calc(88vh-88px)]">
-              <div className="rounded-md border border-border bg-background/60 p-4">
-                <p className="text-sm text-muted-foreground mb-3">
-                  {checkoutStep === "payment"
-                    ? "Finalize o pagamento via Pix no modal do Mercado Pago."
-                    : "Acompanhe o status do pagamento abaixo (QR Pix aparece aqui)."}
-                </p>
-                {checkoutStep === "payment" ? (
-                  <div id={PAYMENT_BRICK_CONTAINER_ID} />
-                ) : (
-                  <div id={STATUS_BRICK_CONTAINER_ID} />
-                )}
-              </div>
-              {checkoutError ? (
-                <p className="text-sm rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-3">
-                  {checkoutError}
-                </p>
+          <div className="max-h-[calc(88vh-88px)] space-y-3 overflow-y-auto px-4 py-4">
+            <div className="rounded-md border border-border bg-background/60 p-4">
+              <p className="mb-3 text-sm text-muted-foreground">
+                {checkoutStatus
+                  ? `Status atual: ${translatePaymentStatus(checkoutStatus)}`
+                  : "Aguardando status do pagamento..."}
+              </p>
+              {checkoutQrImage ? (
+                <img
+                  src={checkoutQrImage.startsWith("data:") ? checkoutQrImage : `data:image/png;base64,${checkoutQrImage}`}
+                  alt="QR Code Pix"
+                  className="mx-auto h-56 w-56 rounded-md border border-border/70 bg-white p-2"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">QR Code indisponível no momento.</p>
+              )}
+              {checkoutQrCode ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Copia e cola Pix:
+                  </p>
+                  <div className="rounded border border-border/70 bg-background p-2 text-xs break-all font-mono">
+                    {checkoutQrCode}
+                  </div>
+                  <Button type="button" variant="secondary" onClick={() => void handleCopyPixCode()}>
+                    Copiar código Pix
+                  </Button>
+                </div>
               ) : null}
             </div>
-          ) : null}
+            {checkoutError ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                {checkoutError}
+              </p>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </>
