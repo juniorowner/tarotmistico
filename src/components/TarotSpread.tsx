@@ -1,35 +1,129 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { majorArcana, TarotCard } from "@/data/tarotCards";
+import { allCards, type DealtTarotCard } from "@/data/tarotCards";
+import { drawReadingCards } from "@/lib/shuffleDeck";
 import { SpreadType } from "@/data/spreadTypes";
 import { saveDiaryEntry } from "@/lib/diary";
-import { BookOpen, Save } from "lucide-react";
+import { commitReadingConsult } from "@/lib/readingConsult";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIsNarrowViewport } from "@/hooks/use-mobile";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Save } from "lucide-react";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
 import { toast } from "sonner";
 
-const getRandomCards = (count: number): TarotCard[] => {
-  const shuffled = [...majorArcana].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
-};
+function suitLabelPt(suit: NonNullable<DealtTarotCard["suit"]>): string {
+  const labels = { cups: "Copas", swords: "Espadas", pentacles: "Ouros", wands: "Paus" } as const;
+  return labels[suit];
+}
+
+function CardDetailBody({ card }: { card: DealtTarotCard }) {
+  const active = card.isReversed ? card.reversed : card.meaning;
+  const passive = card.isReversed ? card.meaning : card.reversed;
+  const passiveLabel = card.isReversed ? "Se estivesse direita" : "Se estivesse invertida";
+
+  return (
+    <>
+      {card.isReversed && (
+        <p className="text-xs font-display tracking-wider uppercase text-destructive/90 mb-2 text-left">
+          Carta invertida
+        </p>
+      )}
+      {card.arcana === "minor" && card.suit && (
+        <p className="text-xs text-muted-foreground mb-2 text-left">
+          Arcano menor · Naipe: {suitLabelPt(card.suit)}
+        </p>
+      )}
+      <p className="text-foreground/80 font-body text-base md:text-lg leading-relaxed mb-3 text-left">
+        {card.description}
+      </p>
+      <div className="flex flex-col gap-2 text-sm text-left">
+        <p>
+          <span className="text-primary font-semibold">Leitura nesta posição:</span>{" "}
+          <span className="text-foreground/70">{active}</span>
+        </p>
+        <p>
+          <span className="text-muted-foreground font-semibold">{passiveLabel}:</span>{" "}
+          <span className="text-foreground/60">{passive}</span>
+        </p>
+      </div>
+    </>
+  );
+}
+
+const dealSpread = (count: number): DealtTarotCard[] => drawReadingCards(allCards, count);
 
 const TarotSpread = () => {
+  const { user, openAuthDialog, refreshAiQuota, isLoading: authLoading, aiQuota } = useAuth();
+  const isNarrow = useIsNarrowViewport();
   const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
-  const [cards, setCards] = useState<TarotCard[]>([]);
+  const [cards, setCards] = useState<DealtTarotCard[]>([]);
   const [revealed, setRevealed] = useState<boolean[]>([]);
   const [hasStarted, setHasStarted] = useState(false);
-  const [selectedCard, setSelectedCard] = useState<TarotCard | null>(null);
+  const [selectedCard, setSelectedCard] = useState<DealtTarotCard | null>(null);
+  const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(null);
+  const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [consultCommitLoading, setConsultCommitLoading] = useState(false);
+  const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
+
+  /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
+  const quotaExhausted =
+    !!user &&
+    aiQuota != null &&
+    aiQuota.free_remaining_today < 1 &&
+    aiQuota.credits_balance < 1;
 
   const startReading = useCallback(() => {
     if (!selectedSpread) return;
-    const selected = getRandomCards(selectedSpread.cardCount);
+    if (authLoading) return;
+    if (!user) {
+      openAuthDialog(
+        "Inicie sessão para realizar uma leitura. As 3 consultas grátis por dia (UTC) e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+      );
+      return;
+    }
+    if (quotaExhausted) {
+      toast.error("Limite de consultas grátis de hoje atingido e sem créditos.", {
+        description: (
+          <Link to="/creditos" className="text-primary underline underline-offset-2 font-body">
+            Comprar créditos
+          </Link>
+        ),
+      });
+      return;
+    }
+    const selected = dealSpread(selectedSpread.cardCount);
+    const n = selectedSpread.cardCount;
+    setReadingDedupeKey(crypto.randomUUID());
+    setConsultationId(null);
+    setConsultCommitError(null);
     setCards(selected);
-    setRevealed(new Array(selectedSpread.cardCount).fill(false));
+    setRevealed(new Array(n).fill(false));
     setHasStarted(true);
     setSelectedCard(null);
-  }, [selectedSpread]);
+  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted]);
+
+  useEffect(() => {
+    if (user && selectedSpread && !hasStarted) {
+      void refreshAiQuota();
+    }
+  }, [user, selectedSpread, hasStarted, refreshAiQuota]);
 
   const revealCard = (index: number) => {
     setRevealed((prev) => {
@@ -46,14 +140,62 @@ const TarotSpread = () => {
     setRevealed([]);
     setHasStarted(false);
     setSelectedCard(null);
+    setReadingDedupeKey(null);
+    setConsultationId(null);
+    setConsultCommitError(null);
+    setConsultCommitLoading(false);
   };
 
-  const navigate = useNavigate();
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
 
-  const saveReading = () => {
+  useEffect(() => {
+    if (!allRevealed || !user || !selectedSpread || !readingDedupeKey || cards.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setConsultCommitLoading(true);
+      setConsultCommitError(null);
+      try {
+        const res = await commitReadingConsult({
+          dedupeKey: readingDedupeKey,
+          spreadId: selectedSpread.id,
+          spreadName: selectedSpread.name,
+          cards,
+        });
+        if (cancelled) return;
+        setConsultationId(res.consultation_id);
+        await refreshAiQuota();
+      } catch (err) {
+        if (cancelled) return;
+        const e = err as Error & { code?: string };
+        if (e.code === "QUOTA_EXCEEDED") {
+          setConsultCommitError(
+            e.message ||
+              "Limite de consultas grátis hoje atingido. Compre créditos ou volte amanhã."
+          );
+        } else {
+          setConsultCommitError(e instanceof Error ? e.message : "Não foi possível registar a consulta.");
+        }
+        setConsultationId(null);
+      } finally {
+        if (!cancelled) setConsultCommitLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [allRevealed, user, selectedSpread, readingDedupeKey, cards, refreshAiQuota]);
+
+  const saveReading = async () => {
     if (!selectedSpread) return;
-    saveDiaryEntry({
+    if (!user) {
+      openAuthDialog(
+        "Para guardar no diário, inicie sessão. As leituras ficam na sua conta. Você tem 3 interpretações por IA grátis por dia; depois pode usar créditos."
+      );
+      return;
+    }
+    const saved = await saveDiaryEntry(user.id, {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       spreadName: selectedSpread.name,
@@ -62,7 +204,11 @@ const TarotSpread = () => {
       cards,
       note: "",
     });
-    toast.success("Leitura salva no diário! ✨");
+    if (saved) {
+      toast.success("Leitura guardada no diário.");
+    } else {
+      toast.error("Não foi possível guardar. Tente novamente.");
+    }
   };
 
   const getGridClass = () => {
@@ -92,26 +238,49 @@ const TarotSpread = () => {
         >
           Sua Leitura
         </motion.h2>
-        <p className="text-muted-foreground font-body text-lg mb-10 max-w-md mx-auto">
+        <p className="text-muted-foreground font-body text-lg mb-6 max-w-md mx-auto">
           Escolha o tipo de leitura, concentre-se em sua pergunta e revele as cartas.
         </p>
+
+        <div className="max-w-2xl mx-auto mb-10 rounded-lg border border-border/60 bg-muted/15 px-4 py-3 text-left">
+          <p className="font-display text-[10px] tracking-[0.2em] uppercase text-muted-foreground mb-1.5">
+            Aviso
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed font-body">
+            As leituras e a interpretação por IA são apenas entretenimento e reflexão pessoal. Não leve os resultados como
+            verdade absoluta nem como orientação profissional (saúde, jurídica, financeira ou psicológica). Não nos
+            responsabilizamos por decisões ou consequências decorrentes do uso deste conteúdo.
+          </p>
+        </div>
 
         {!hasStarted ? (
           <>
             <SpreadSelector onSelect={setSelectedSpread} selected={selectedSpread} />
             <AnimatePresence>
               {selectedSpread && (
-                <motion.button
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={startReading}
-                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold transition-all hover:brightness-110"
-                >
-                  ✦ Iniciar {selectedSpread.name} ✦
-                </motion.button>
+                <div className="flex flex-col items-center gap-3">
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    whileHover={{ scale: authLoading || quotaExhausted ? 1 : 1.05 }}
+                    whileTap={{ scale: authLoading || quotaExhausted ? 1 : 0.95 }}
+                    onClick={startReading}
+                    disabled={authLoading || quotaExhausted}
+                    className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold transition-all hover:brightness-110 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {`✦ Iniciar ${selectedSpread.name} ✦`}
+                  </motion.button>
+                  {user && quotaExhausted && (
+                    <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
+                      Sem consultas grátis hoje e sem créditos.{" "}
+                      <Link to="/creditos" className="text-primary underline underline-offset-2">
+                        Comprar créditos
+                      </Link>{" "}
+                      ou volte amanhã (limite diário em UTC).
+                    </p>
+                  )}
+                </div>
               )}
             </AnimatePresence>
           </>
@@ -130,8 +299,9 @@ const TarotSpread = () => {
             <div className={`${getGridClass()} mb-12`}>
               {cards.map((card, i) => (
                 <TarotCardComponent
-                  key={card.id}
+                  key={`${card.id}-${i}`}
                   card={card}
+                  isReversed={card.isReversed}
                   label={selectedSpread?.labels[i] || ""}
                   isRevealed={revealed[i]}
                   onReveal={() => revealCard(i)}
@@ -140,39 +310,69 @@ const TarotSpread = () => {
               ))}
             </div>
 
-            <AnimatePresence>
-              {selectedCard && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="max-w-lg mx-auto bg-card border border-border rounded-xl p-6 mb-8"
-                >
-                  <h3 className="font-display text-xl text-primary mb-2">
-                    {selectedCard.emoji} {selectedCard.name}
-                  </h3>
-                  <p className="text-foreground/80 font-body text-lg leading-relaxed mb-3">
-                    {selectedCard.description}
-                  </p>
-                  <div className="flex flex-col gap-2 text-sm">
-                    <p>
-                      <span className="text-primary font-semibold">Significado:</span>{" "}
-                      <span className="text-foreground/70">{selectedCard.meaning}</span>
-                    </p>
-                    <p>
-                      <span className="text-destructive font-semibold">Invertida:</span>{" "}
-                      <span className="text-foreground/70">{selectedCard.reversed}</span>
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Mobile: detalhe da carta em drawer (bottom sheet) */}
+            <Drawer
+              open={isNarrow && !!selectedCard}
+              onOpenChange={(open) => {
+                if (!open) setSelectedCard(null);
+              }}
+            >
+              <DrawerContent className="max-h-[85vh] flex flex-col">
+                {selectedCard && (
+                  <>
+                    <DrawerHeader className="text-left pb-2">
+                      <DrawerTitle className="font-display text-lg text-primary">
+                        {selectedCard.emoji} {selectedCard.name}
+                        {selectedCard.isReversed ? " · invertida" : ""}
+                      </DrawerTitle>
+                      <DrawerDescription className="text-xs text-muted-foreground font-body">
+                        {selectedCard.nameEn}
+                      </DrawerDescription>
+                    </DrawerHeader>
+                    <div className="overflow-y-auto px-4 pb-8 pt-0">
+                      <CardDetailBody card={selectedCard} />
+                    </div>
+                  </>
+                )}
+              </DrawerContent>
+            </Drawer>
+
+            {/* Desktop: significado completo em modal (evita texto “lá em baixo” fora da vista) */}
+            <Dialog
+              open={!isNarrow && !!selectedCard}
+              onOpenChange={(open) => {
+                if (!open) setSelectedCard(null);
+              }}
+            >
+              <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(100vw-1.5rem,32rem)] max-w-lg flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:rounded-xl">
+                {selectedCard && (
+                  <>
+                    <DialogHeader className="shrink-0 border-b border-border/70 p-6 pb-3 pr-14 text-left">
+                      <DialogTitle className="font-display text-xl text-primary">
+                        {selectedCard.emoji} {selectedCard.name}
+                        {selectedCard.isReversed ? " · invertida" : ""}
+                      </DialogTitle>
+                      <DialogDescription className="font-body text-xs italic text-muted-foreground">
+                        {selectedCard.nameEn}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="min-h-0 overflow-y-auto px-6 pb-6 pt-4">
+                      <CardDetailBody card={selectedCard} />
+                    </div>
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {allRevealed && selectedSpread && (
               <AIInterpretation
+                spreadId={selectedSpread.id}
                 spreadName={selectedSpread.name}
                 labels={selectedSpread.labels}
                 cards={cards}
+                consultationId={consultationId}
+                consultCommitLoading={consultCommitLoading}
+                consultCommitError={consultCommitError}
               />
             )}
 
@@ -195,7 +395,8 @@ const TarotSpread = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={startReading}
-                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                  disabled={authLoading || quotaExhausted}
+                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Repetir Leitura
                 </motion.button>

@@ -1,17 +1,25 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { majorArcana, TarotCard } from "@/data/tarotCards";
+import { motion } from "framer-motion";
+import { TarotCard } from "@/data/tarotCards";
 import tarotBack from "@/assets/tarot-back.jpg";
 
 interface TarotCardComponentProps {
   card: TarotCard | null;
+  /** Orientação na mesa (frente de cabeça para baixo quando revelada). */
+  isReversed?: boolean;
   label: string;
   isRevealed: boolean;
   onReveal: () => void;
   delay: number;
 }
 
-const TarotCardComponent = ({ card, label, isRevealed, onReveal, delay }: TarotCardComponentProps) => {
+const TarotCardComponent = ({
+  card,
+  isReversed = false,
+  label,
+  isRevealed,
+  onReveal,
+  delay,
+}: TarotCardComponentProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -44,15 +52,21 @@ const TarotCardComponent = ({ card, label, isRevealed, onReveal, delay }: TarotC
           {/* Front */}
           <div
             className="absolute inset-0 rounded-lg overflow-hidden border-2 border-gold/50 bg-card flex flex-col items-center justify-center p-4 text-center"
-            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+            style={{
+              backfaceVisibility: "hidden",
+              transform: isRevealed && isReversed ? "rotateY(180deg) rotateZ(180deg)" : "rotateY(180deg)",
+            }}
           >
             {card && (
               <>
-                <span className="text-4xl mb-2">{card.emoji}</span>
-                <h3 className="font-display text-sm md:text-base text-primary font-semibold mb-1">{card.name}</h3>
-                <p className="text-xs text-muted-foreground italic mb-2">{card.nameEn}</p>
-                <div className="w-8 h-px bg-primary/40 mb-2" />
-                <p className="text-xs leading-relaxed text-foreground/80">{card.meaning}</p>
+                <span className="mb-2 text-4xl">{card.emoji}</span>
+                <h3 className="mb-1 font-display text-sm font-semibold text-primary md:text-base">{card.name}</h3>
+                <p className="mb-2 text-xs italic text-muted-foreground">{card.nameEn}</p>
+                {isReversed && (
+                  <p className="text-[10px] font-display uppercase tracking-widest text-destructive/90">
+                    Invertida
+                  </p>
+                )}
               </>
             )}
           </div>

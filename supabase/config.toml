@@ -1,1 +1,30 @@
-project_id = "kbymmjozatpugswjhfmz"
+project_id = "oznouxvpzwbnrxsuyshg"
+
+# O gateway valida JWT antes da função; em alguns casos tokens ainda válidos no Auth
+# falham aqui. A função `interpret-reading` valida o JWT com `getUser(jwt)` na mesma.
+[functions.interpret-reading]
+verify_jwt = false
+
+[functions.ai-quota]
+verify_jwt = false
+
+[functions.commit-reading-consult]
+verify_jwt = false
+
+[functions.mercadopago-create-preference]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.mercadopago-process-payment]
+verify_jwt = false
+
+[functions.mercadopago-payment-status]
+verify_jwt = false
+
+[functions.reconcile-credit-orders]
+verify_jwt = false
+
+[functions.send-daily-reminders]
+verify_jwt = false

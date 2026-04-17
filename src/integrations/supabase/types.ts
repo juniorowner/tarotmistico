@@ -14,7 +14,221 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          id: string
+          credits: number
+          created_at: string
+        }
+        Insert: {
+          id: string
+          credits?: number
+          created_at?: string
+        }
+        Update: {
+          credits?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      diary_entries: {
+        Row: {
+          id: string
+          user_id: string
+          spread_name: string
+          spread_emoji: string | null
+          labels: string[]
+          cards: Json
+          note: string
+          reading_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          spread_name: string
+          spread_emoji?: string | null
+          labels?: string[]
+          cards?: Json
+          note?: string
+          reading_date?: string
+          created_at?: string
+        }
+        Update: {
+          spread_name?: string
+          spread_emoji?: string | null
+          labels?: string[]
+          cards?: Json
+          note?: string
+          reading_date?: string
+        }
+        Relationships: []
+      }
+      ai_readings: {
+        Row: {
+          id: string
+          spread_id: string
+          spread_name: string
+          question: string | null
+          cards: Json
+          ai_interpretation: string
+          model_used: string | null
+          user_id: string | null
+          reading_consult_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          spread_id: string
+          spread_name: string
+          question?: string | null
+          cards?: Json
+          ai_interpretation: string
+          model_used?: string | null
+          user_id?: string | null
+          reading_consult_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          question?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      reading_consults: {
+        Row: {
+          id: string
+          user_id: string
+          dedupe_key: string
+          spread_id: string
+          spread_name: string
+          cards: Json
+          used_credit: boolean
+          revoked_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          dedupe_key: string
+          spread_id: string
+          spread_name: string
+          cards?: Json
+          used_credit?: boolean
+          revoked_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          cards?: Json
+          used_credit?: boolean
+          revoked_at?: string | null
+        }
+        Relationships: []
+      }
+      credit_ledger: {
+        Row: {
+          id: string
+          user_id: string
+          credits_delta: number
+          balance_after: number
+          event_type: string
+          summary: string
+          ref_table: string | null
+          ref_id: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          credits_delta: number
+          balance_after: number
+          event_type: string
+          summary: string
+          ref_table?: string | null
+          ref_id?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          metadata?: Json
+        }
+        Relationships: []
+      }
+      credit_orders: {
+        Row: {
+          id: string
+          user_id: string
+          package_id: string
+          credits: number
+          amount_cents: number
+          currency: string
+          status: string
+          mp_preference_id: string | null
+          mp_payment_id: string | null
+          created_at: string
+          paid_at: string | null
+          refunded_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          package_id: string
+          credits: number
+          amount_cents: number
+          currency?: string
+          status?: string
+          mp_preference_id?: string | null
+          mp_payment_id?: string | null
+          created_at?: string
+          paid_at?: string | null
+          refunded_at?: string | null
+        }
+        Update: {
+          status?: string
+          mp_preference_id?: string | null
+          mp_payment_id?: string | null
+          paid_at?: string | null
+          refunded_at?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          timezone: string
+          reminder_hour: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          timezone?: string
+          reminder_hour?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          timezone?: string
+          reminder_hour?: number
+          active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
