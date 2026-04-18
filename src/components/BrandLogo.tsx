@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import logoSrc from "@/assets/logo.svg";
+import logoSrc from "@/assets/logo.png";
 
 type BrandLogoProps = {
   className?: string;
@@ -8,7 +8,7 @@ type BrandLogoProps = {
   logoClassName?: string;
 };
 
-/** Logo da marca — ficheiro em `src/assets/logo.svg` (substitua pelo seu PNG/SVG). */
+/** Logo da marca — ficheiro em `src/assets/logo.png`. */
 export function BrandLogo({ className, logoClassName }: BrandLogoProps) {
   return (
     <Link
