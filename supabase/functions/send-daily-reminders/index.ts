@@ -16,6 +16,20 @@ type PushSubscriptionRow = {
   reminder_hour: number;
 };
 
+/** Hora 0–23 no fuso; evita Number(format()) que vira NaN se o runtime devolver "01:59" ou "1:59 AM". */
+function getHourInTimeZone(timeZone: string, date: Date): number {
+  const tz = (timeZone || "America/Sao_Paulo").trim();
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const hourPart = parts.find((p) => p.type === "hour");
+  if (!hourPart) return -1;
+  const h = parseInt(hourPart.value, 10);
+  return Number.isFinite(h) ? h : -1;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -65,17 +79,17 @@ serve(async (req) => {
   const subscriptions = (data ?? []) as PushSubscriptionRow[];
   let sent = 0;
   let deactivated = 0;
+  let eligible = 0;
+
+  const now = new Date();
+  const hourNowSaoPaulo = getHourInTimeZone("America/Sao_Paulo", now);
 
   for (const sub of subscriptions) {
-    const nowHour = Number(
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: sub.timezone || "America/Sao_Paulo",
-        hour: "2-digit",
-        hourCycle: "h23",
-      }).format(new Date())
-    );
+    const nowHour = getHourInTimeZone(sub.timezone, now);
+    const targetHour = Number(sub.reminder_hour);
+    if (!Number.isFinite(targetHour) || nowHour !== targetHour) continue;
 
-    if (nowHour !== sub.reminder_hour) continue;
+    eligible += 1;
 
     try {
       await webpush.sendNotification(
@@ -99,7 +113,17 @@ serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, sent, deactivated }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      sent,
+      deactivated,
+      active_subscriptions: subscriptions.length,
+      hour_now_sao_paulo: hourNowSaoPaulo,
+      eligible_after_hour_filter: eligible,
+    }),
+    {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    }
+  );
 });

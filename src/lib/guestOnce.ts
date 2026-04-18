@@ -12,6 +12,13 @@ const GUEST_CONSUMED_KEY = "tarot:guest-once-consumed:v1";
 /** Pergunta vinda do Hero — consumida ao montar a área de IA. */
 export const PENDING_GUEST_QUESTION_KEY = "tarot:pending-question:v1";
 
+/** Antes da 1ª interpretação IA sem conta (limite por aparelho). */
+export const GUEST_DEVICE_LIMIT_BEFORE = "✨ Você tem 1 leitura completa gratuita";
+
+/** Depois de usar no aparelho — modal e CTAs de login. */
+export const GUEST_DEVICE_LIMIT_AFTER =
+  "🔒 Sua leitura gratuita já foi usada\nEntre para continuar";
+
 /** Lê e apaga a pergunta guardada pelo Hero (sessionStorage). */
 export function consumePendingGuestQuestion(): string {
   if (typeof window === "undefined") return "";

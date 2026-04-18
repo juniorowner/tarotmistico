@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import type { QuickSpreadChoice } from "@/lib/inferSpreadFromQuestion";
 import { inferSpreadFromQuestion } from "@/lib/inferSpreadFromQuestion";
 import { trackEvent } from "@/lib/analytics";
+import { CTA_CONTINUE_READING } from "@/lib/ctaCopy";
 
 const OPTIONS: Array<{
   id: QuickSpreadChoice;
@@ -92,7 +93,7 @@ export function ConversionChooseSpread({ question, onBack, onContinue }: Props) 
           onClick={() => onContinue(selected)}
           className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
         >
-          Continuar
+          {CTA_CONTINUE_READING}
         </motion.button>
       </div>
     </section>

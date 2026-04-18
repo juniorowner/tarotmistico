@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { DealtTarotCard } from "@/data/tarotCards";
 import TarotCardComponent from "@/components/TarotCard";
+import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 
 type Props = {
   card: DealtTarotCard;
@@ -59,7 +60,7 @@ export function ConversionCardPreview({ card, onSeeMeaning }: Props) {
           onClick={onSeeMeaning}
           className="w-full max-w-sm font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all disabled:opacity-40 disabled:pointer-events-none"
         >
-          Ver significado
+          {CTA_DISCOVER_MY_ANSWER}
         </motion.button>
       </motion.div>
     </div>

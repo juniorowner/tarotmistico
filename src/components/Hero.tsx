@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useAuth } from "@/contexts/AuthContext";
+import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 
 type HeroProps = {
   onDiscover: (question: string) => void;
@@ -67,7 +68,7 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
             onClick={submit}
             className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
           >
-            Descobrir agora
+            {CTA_DISCOVER_MY_ANSWER}
           </button>
 
           <div className="pt-4 flex flex-wrap justify-center items-center gap-x-3 sm:gap-x-4 gap-y-2 text-sm text-muted-foreground font-body px-1 max-w-3xl mx-auto">

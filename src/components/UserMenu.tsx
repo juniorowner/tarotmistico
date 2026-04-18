@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Loader2, LogIn, LogOut, Mail, Sparkles, User } from "lucide-react";
 
 export function UserMenu() {
-  const { user, isLoading, credits, friendlyName, openAuthDialog, signOut, updateDisplayName } = useAuth();
+  const { user, isLoading, credits, aiQuota, friendlyName, openAuthDialog, signOut, updateDisplayName } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -48,6 +48,13 @@ export function UserMenu() {
 
   const n = credits ?? 0;
 
+  /** Evita stress de “pagar” enquanto ainda há leitura completa grátis e sem saldo pago. */
+  const showCreditsNav =
+    !isLoading &&
+    (aiQuota == null ||
+      aiQuota.free_remaining_today < 1 ||
+      aiQuota.credits_balance > 0);
+
   const handleSaveDisplayName = async () => {
     setSavingName(true);
     const { error } = await updateDisplayName(draftName);
@@ -62,15 +69,17 @@ export function UserMenu() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap justify-end">
-      <Link
-        to="/creditos"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-card/70 px-2.5 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50"
-        title="Ver créditos e comprar mais"
-      >
-        <Sparkles className="h-3.5 w-3.5 shrink-0" />
-        <span>Créditos</span>
-        <span className="tabular-nums font-semibold text-foreground">{n}</span>
-      </Link>
+      {showCreditsNav ? (
+        <Link
+          to="/creditos"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-card/70 px-2.5 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50"
+          title="Pacotes e saldo para novas leituras completas"
+        >
+          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          <span>Créditos</span>
+          <span className="tabular-nums font-semibold text-foreground">{n}</span>
+        </Link>
+      ) : null}
 
       <Popover open={accountOpen} onOpenChange={setAccountOpen}>
         <PopoverTrigger asChild>
@@ -133,6 +142,14 @@ export function UserMenu() {
                 "Guardar nome"
               )}
             </Button>
+            {!showCreditsNav ? (
+              <Link
+                to="/creditos"
+                className="block text-center text-[11px] text-muted-foreground font-body underline-offset-2 hover:text-primary hover:underline"
+              >
+                Planos e leituras completas
+              </Link>
+            ) : null}
           </div>
         </PopoverContent>
       </Popover>

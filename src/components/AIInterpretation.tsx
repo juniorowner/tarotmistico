@@ -7,11 +7,14 @@ import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
 import {
   consumePendingGuestQuestion,
+  GUEST_DEVICE_LIMIT_AFTER,
+  GUEST_DEVICE_LIMIT_BEFORE,
   hasGuestOnceBeenConsumedLocally,
   markGuestOnceConsumedLocally,
   requestGuestInterpretationOnce,
 } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
+import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -75,9 +78,7 @@ const AIInterpretation = ({
     }
     if (guestMode && hasGuestOnceBeenConsumedLocally()) {
       trackEvent("guest_interpretation_blocked_already_used");
-      openAuthDialog(
-        "Você já usou a leitura completa grátis neste aparelho. Entre ou crie conta para continuar — as cartas acima você pode explorar à vontade."
-      );
+      openAuthDialog(GUEST_DEVICE_LIMIT_AFTER);
       return;
     }
     trackEvent("ai_interpretation_requested", {
@@ -105,7 +106,7 @@ const AIInterpretation = ({
         });
         markGuestOnceConsumedLocally();
         onGuestConsumed?.();
-        setQuotaHint("Para uma nova leitura completa, entre ou cadastre-se — ou sorteie de novo só para ver as cartas.");
+        setQuotaHint(GUEST_DEVICE_LIMIT_AFTER);
       } else {
         const result = await requestAIInterpretation(
           {
@@ -126,7 +127,7 @@ const AIInterpretation = ({
         });
         await refreshAiQuota();
         if (result.used_credit) {
-          setQuotaHint("Esta leitura usou um crédito da sua conta.");
+          setQuotaHint("Esta tiragem ficou registada na sua conta.");
         }
       }
     } catch (err) {
@@ -136,7 +137,7 @@ const AIInterpretation = ({
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "truncated" });
           setError(
             e.message ||
-              "A leitura veio incompleta. Toque em «Descobrir a resposta completa» de novo."
+              `A leitura veio incompleta. Toque em «${CTA_DISCOVER_MY_ANSWER}» de novo.`
           );
           return;
         }
@@ -151,15 +152,18 @@ const AIInterpretation = ({
         if (e.code === "GUEST_ALREADY_USED") {
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "already_used" });
           onGuestConsumed?.();
-          openAuthDialog("A consulta completa grátis deste dispositivo já foi usada. Entre ou crie conta para continuar.");
-          setError("A consulta grátis deste dispositivo já foi usada. Faça login para continuar.");
+          openAuthDialog(GUEST_DEVICE_LIMIT_AFTER);
+          setError("🔒 Sua leitura gratuita já foi usada.\n\nEntre para continuar.");
           return;
         }
         trackEvent("guest_interpretation_failed", {
           spread_id: spreadId,
           reason: e.code || "unknown",
         });
-        setError(e.message || "Não foi possível concluir a interpretação grátis. Tente de novo ou faça login.");
+        setError(
+          e.message ||
+            `Não foi possível concluir a interpretação grátis. Tente de novo.\n\n${GUEST_DEVICE_LIMIT_AFTER}`
+        );
         return;
       }
       if (e.message === "AUTH_REQUIRED" || e.code === "AUTH_REQUIRED") {
@@ -180,7 +184,7 @@ const AIInterpretation = ({
         trackEvent("ai_interpretation_quota_exceeded");
         setError(
           e.message ||
-            "Sua leitura gratuita já foi utilizada. Com créditos você continua quando quiser."
+            "Sua leitura gratuita nesta conta já foi utilizada. Pode ver opções para novas leituras completas na página de pacotes."
         );
         setErrorFooter("quota");
         return;
@@ -226,19 +230,19 @@ const AIInterpretation = ({
       className="max-w-2xl mx-auto mt-8 scroll-mt-28"
     >
       {guestMode ? (
-        <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
-          Sorteie e veja as cartas à vontade, com ou sem conta.{" "}
-          <strong className="text-foreground/95">A primeira leitura completa neste aparelho é gratuita</strong> — depois,
-          entre ou cadastre-se para continuar.
-        </p>
+        <div className="text-center mb-5 px-2 max-w-md mx-auto space-y-2">
+          <p className="font-body text-base md:text-lg text-foreground font-medium leading-snug">
+            {GUEST_DEVICE_LIMIT_BEFORE}
+          </p>
+          <p className="text-sm md:text-base text-muted-foreground font-body leading-relaxed">
+            Quando todas as cartas estiverem reveladas, use o botão abaixo para ver a interpretação completa.
+          </p>
+        </div>
       ) : aiQuota && aiQuota.free_remaining_today > 0 ? (
         <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
           <span className="text-primary">✨</span>{" "}
-          <strong className="text-foreground/95">Sua primeira interpretação completa é gratuita.</strong> Depois, você
-          pode continuar com créditos.{" "}
-          <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/85">
-            Ver créditos
-          </Link>
+          <strong className="text-foreground/95">Sua primeira interpretação completa com IA nesta conta é gratuita.</strong>{" "}
+          Aproveite esta leitura com calma.
         </p>
       ) : null}
 
@@ -252,19 +256,15 @@ const AIInterpretation = ({
       {!interpretation && !isLoading && guestMode && hasGuestOnceBeenConsumedLocally() && (
         <div className="space-y-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-5 text-center">
           <p className="font-display text-sm text-primary tracking-wide uppercase">Interpretação IA</p>
-          <p className="text-sm text-foreground font-body leading-relaxed">
-            Você já usou a interpretação com IA grátis neste aparelho. Pode continuar explorando as cartas acima à vontade.
+          <p className="text-base md:text-lg text-foreground font-body font-medium leading-snug">
+            🔒 Sua leitura gratuita já foi usada
           </p>
-          <p className="text-xs text-muted-foreground font-body">
-            Para uma nova interpretação com IA, entre ou crie uma conta.
+          <p className="text-sm text-muted-foreground font-body leading-relaxed">
+            Entre para continuar
           </p>
           <button
             type="button"
-            onClick={() =>
-              openAuthDialog(
-                "Entre ou cadastre-se para desbloquear novas interpretações com IA. Suas tiragens com cartas continuam disponíveis sem login."
-              )
-            }
+            onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_AFTER)}
             className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
           >
             Entrar
@@ -289,7 +289,7 @@ const AIInterpretation = ({
             className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
           >
             <Sparkles className="w-4 h-4" />
-            Descobrir a resposta completa
+            {CTA_DISCOVER_MY_ANSWER}
           </motion.button>
         </div>
       )}
@@ -312,7 +312,7 @@ const AIInterpretation = ({
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center text-xs text-primary/80 font-body mb-2"
+            className="text-center text-sm text-primary/90 font-body mb-2 whitespace-pre-line leading-relaxed max-w-md mx-auto px-2"
           >
             {quotaHint}
           </motion.p>
@@ -329,7 +329,7 @@ const AIInterpretation = ({
           >
             <div className="flex items-start gap-2">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              <p className="font-body text-sm">{error}</p>
+              <p className="font-body text-sm whitespace-pre-line">{error}</p>
             </div>
             {errorFooter === "quota" && (
               <div className="pl-7 space-y-2">
@@ -346,7 +346,8 @@ const AIInterpretation = ({
             )}
             {errorFooter === "included" && (
               <p className="text-xs text-muted-foreground pl-7 font-body">
-                A primeira leitura completa na conta é gratuita; depois, use créditos para novas leituras completas.
+                Recarregue a página, revele todas as cartas de novo e aguarde o registo da consulta. Se persistir, saia e
+                entre de novo.
               </p>
             )}
           </motion.div>
@@ -374,8 +375,8 @@ const AIInterpretation = ({
               Texto gerado por IA para reflexão — não substitui acompanhamento profissional.
             </p>
             <p className="text-xs text-muted-foreground font-body leading-relaxed pt-2">
-              Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo extra; uma{" "}
-              <strong className="text-foreground/90">nova tiragem</strong> usa nova consulta (grátis ou crédito).
+              Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo extra; cada{" "}
+              <strong className="text-foreground/90">nova tiragem</strong> inicia uma consulta nova na sua conta.
             </p>
             <motion.button
               type="button"

@@ -208,7 +208,7 @@ export function AuthDialog() {
           <DialogTitle className="font-display text-xl text-primary">
             {forgotPassword ? "Recuperar senha" : "Entrar ou criar conta"}
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground font-body text-left">
+          <DialogDescription className="text-muted-foreground font-body text-left whitespace-pre-line">
             {forgotPassword
               ? "Indique o e-mail da conta. Enviaremos um link seguro para definir uma nova senha."
               : authDialogMessage ??

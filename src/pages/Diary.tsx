@@ -10,6 +10,7 @@ import {
 import { Trash2, Edit3, Check, X, ArrowLeft, BookOpen } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 import { UserMenu } from "@/components/UserMenu";
 import { SiteNavBar } from "@/components/SiteNavBar";
 import SEO from "@/components/SEO";
@@ -92,9 +93,7 @@ const Diary = () => {
           <Button
             type="button"
             onClick={() =>
-              openAuthDialog(
-                "O diário fica na sua conta. Sua primeira leitura completa é gratuita; depois, use créditos."
-              )
+              openAuthDialog("O diário fica na sua conta — inicie sessão para guardar e rever as suas leituras.")
             }
             className="font-display tracking-wider uppercase"
           >
@@ -158,7 +157,7 @@ const Diary = () => {
               to="/"
               className="inline-block font-display tracking-[0.15em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
             >
-              Fazer uma Leitura
+              {CTA_DISCOVER_MY_ANSWER}
             </Link>
           </motion.div>
         ) : (

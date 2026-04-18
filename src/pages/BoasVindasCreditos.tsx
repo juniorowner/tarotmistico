@@ -6,6 +6,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAiQuota, type AiQuotaResponse } from "@/lib/aiQuota";
 import { Button } from "@/components/ui/button";
+import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 
 type QuotaState = { status: "loading" } | { status: "error" } | { status: "ok"; data: AiQuotaResponse };
 
@@ -102,7 +103,7 @@ const BoasVindasCreditos = () => {
                   to="/"
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
                 >
-                  Descobrir minha resposta
+                  {CTA_DISCOVER_MY_ANSWER}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -120,8 +121,8 @@ const BoasVindasCreditos = () => {
 
               <p className="mt-3 text-foreground/90 font-body text-base md:text-lg leading-relaxed">
                 {credits > 0
-                  ? `Você tem ${credits} crédito${credits === 1 ? "" : "s"} para novas leituras completas com IA — ou continue sorteando cartas no início.`
-                  : "Faça novas tiragens no início; para interpretação completa com IA, pode comprar créditos quando quiser."}
+                  ? `Tem saldo para ${credits} ${credits === 1 ? "nova leitura completa" : "novas leituras completas"} com IA — ou continue sorteando cartas no início.`
+                  : "Faça novas tiragens no início. Quando quiser outra leitura completa com IA, abra a página de planos pelo menu da conta."}
               </p>
 
               <div className="mt-10 flex justify-center">

@@ -7,6 +7,12 @@ import { SpreadType } from "@/data/spreadTypes";
 import { saveDiaryEntry } from "@/lib/diary";
 import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
+import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
+import {
+  GUEST_DEVICE_LIMIT_AFTER,
+  GUEST_DEVICE_LIMIT_BEFORE,
+  hasGuestOnceBeenConsumedLocally,
+} from "@/lib/guestOnce";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsNarrowViewport } from "@/hooks/use-mobile";
 import {
@@ -119,7 +125,9 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     if (authLoading) return;
     if (quotaExhausted) {
       trackEvent("reading_start_blocked_quota");
-      toast.error("Use créditos para uma nova leitura completa. A abrir…");
+      toast.message("Sua leitura gratuita nesta conta já foi usada", {
+        description: "A abrir opções para novas leituras completas…",
+      });
       void navigate("/creditos");
       return;
     }
@@ -228,7 +236,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           trackEvent("consultation_commit_quota_exceeded");
           setConsultCommitError(
             e.message ||
-              "A consulta gratuita da conta já foi utilizada. Compre créditos para novas leituras com IA."
+              "A consulta gratuita da sua conta já foi utilizada. Veja pacotes para novas leituras completas com IA."
           );
         } else {
           trackEvent("consultation_commit_failed");
@@ -249,9 +257,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   const saveReading = async () => {
     if (!selectedSpread) return;
     if (!user) {
-      openAuthDialog(
-        "Inicie sessão para guardar no diário. Sua primeira leitura completa na conta é gratuita; depois, créditos."
-      );
+      openAuthDialog("Inicie sessão para guardar esta leitura no diário e rever quando quiser.");
       return;
     }
     const saved = await saveDiaryEntry(user.id, {
@@ -300,18 +306,21 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
         <p className="text-muted-foreground font-body text-sm md:text-base mb-2 max-w-lg mx-auto leading-relaxed">
           {fromConversionFunnel ? (
             selectedSpread && selectedSpread.cardCount === 1 ? (
-              <>Sua carta está na mesa — avance para descobrir a leitura completa quando quiser.</>
+              <>
+                Sua carta está na mesa — revele-a e, ao final, use{" "}
+                <span className="text-foreground/90 font-medium">{CTA_DISCOVER_MY_ANSWER}</span>.
+              </>
             ) : (
               <>
-                Toque nas outras cartas para seguir a tiragem — depois,{" "}
-                <span className="text-foreground/90 font-medium">descubra a resposta completa</span>.
+                Toque nas outras cartas para seguir a tiragem — ao final, use{" "}
+                <span className="text-foreground/90 font-medium">{CTA_DISCOVER_MY_ANSWER}</span>.
               </>
             )
           ) : (
             <>
               <span className="text-foreground/90 font-medium">1.</span> Escolha a tiragem ·{" "}
               <span className="text-foreground/90 font-medium">2.</span> Revele cada carta ·{" "}
-              <span className="text-foreground/90 font-medium">3.</span> Veja sua leitura completa
+              <span className="text-foreground/90 font-medium">3.</span> {CTA_DISCOVER_MY_ANSWER}
             </>
           )}
         </p>
@@ -334,13 +343,28 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   >
                     {`✦ Iniciar ${selectedSpread.name} ✦`}
                   </motion.button>
+                  {!user && selectedSpread && !hasStarted && (
+                    <p className="text-center text-xs sm:text-sm text-muted-foreground font-body max-w-sm px-2 leading-relaxed">
+                      {hasGuestOnceBeenConsumedLocally() ? (
+                        <>
+                          <span className="text-foreground/90 font-medium">
+                            🔒 Sua leitura gratuita já foi usada
+                          </span>
+                          {" · "}
+                          Entre para continuar
+                        </>
+                      ) : (
+                        <span className="text-foreground/90">{GUEST_DEVICE_LIMIT_BEFORE}</span>
+                      )}
+                    </p>
+                  )}
                   {user && quotaExhausted && (
                     <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
-                      Sua leitura gratuita já foi usada.{" "}
+                      Sua leitura gratuita nesta conta já foi usada.{" "}
                       <Link to="/creditos" className="text-primary underline underline-offset-2">
-                        Ver créditos
+                        Ver opções
                       </Link>{" "}
-                      para continuar.
+                      para novas leituras completas.
                     </p>
                   )}
                 </div>
@@ -452,9 +476,8 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 guestMode={!user}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");
-                  toast.message("Interpretação IA grátis concluída neste aparelho.", {
-                    description: "Pode continuar a sortear cartas; para nova IA, entre ou crie conta.",
-                  });
+                  const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split("\n");
+                  toast.message(title, { description: rest.join("\n") || undefined });
                 }}
               />
             )}
@@ -480,7 +503,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   onClick={resetAll}
                   className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
                 >
-                  Escolher Outra Leitura
+                  {CTA_CONTINUE_READING}
                 </motion.button>
               </div>
             )}
@@ -505,7 +528,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 }
                 className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
               >
-                Descobrir a resposta completa
+                {CTA_DISCOVER_MY_ANSWER}
               </button>
             )}
           </div>
