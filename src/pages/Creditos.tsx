@@ -325,10 +325,9 @@ const Creditos = () => {
               Créditos IA
             </h1>
             <p className="text-muted-foreground font-body max-w-xl mx-auto text-sm leading-relaxed">
-              A conta tem <strong className="text-foreground">1 consulta completa grátis no total</strong> (tiragem
-              completa com interpretação por IA). Depois disso,{" "}
-              <strong className="text-foreground">cada nova consulta usa 1 crédito</strong> — não há nova vaga grátis
-              por dia.
+              <span className="text-primary">✨</span>{" "}
+              <strong className="text-foreground">Sua primeira interpretação completa é gratuita.</strong> Depois, você
+              pode continuar com créditos — cada nova leitura completa usa 1 crédito.
             </p>
           </div>
 
@@ -336,19 +335,21 @@ const Creditos = () => {
             <div className="rounded-xl border border-primary/25 bg-card/50 p-4 flex flex-wrap items-center justify-center gap-6 text-sm font-body">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary shrink-0" />
-                <span>
-                  <strong className="text-foreground">{freeRem ?? "—"}</strong>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    vaga(s) grátis restante(s) na conta
-                    {completed != null && (
-                      <span className="text-muted-foreground/80">
-                        {" "}
-                        — {completed}{" "}
-                        {completed === 1 ? "consulta concluída" : "consultas concluídas"}
-                      </span>
-                    )}
-                  </span>
+                <span className="text-muted-foreground">
+                  {freeRem == null ? (
+                    "A carregar…"
+                  ) : freeRem >= 1 ? (
+                    "Primeira leitura completa ainda incluída"
+                  ) : (
+                    "Leitura gratuita da conta já utilizada"
+                  )}
+                  {completed != null && completed > 0 && (
+                    <span className="text-muted-foreground/80">
+                      {" "}
+                      · {completed}{" "}
+                      {completed === 1 ? "consulta feita" : "consultas feitas"}
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="h-4 w-px bg-border hidden sm:block" />

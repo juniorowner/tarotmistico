@@ -119,7 +119,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     if (authLoading) return;
     if (quotaExhausted) {
       trackEvent("reading_start_blocked_quota");
-      toast.error("Sem vaga grátis na conta e sem créditos. A abrir créditos…");
+      toast.error("Use créditos para uma nova leitura completa. A abrir…");
       void navigate("/creditos");
       return;
     }
@@ -250,7 +250,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     if (!selectedSpread) return;
     if (!user) {
       openAuthDialog(
-        "Para guardar no diário, inicie sessão. As leituras ficam na sua conta. Você tem 1 interpretação por IA grátis no total; depois pode usar créditos."
+        "Inicie sessão para guardar no diário. Sua primeira leitura completa na conta é gratuita; depois, créditos."
       );
       return;
     }
@@ -300,39 +300,27 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
         <p className="text-muted-foreground font-body text-sm md:text-base mb-2 max-w-lg mx-auto leading-relaxed">
           {fromConversionFunnel ? (
             selectedSpread && selectedSpread.cardCount === 1 ? (
-              <>
-                Sua carta está na mesa — avance para a{" "}
-                <span className="text-foreground/90 font-medium">interpretação com IA</span> quando quiser (sem login: 1
-                grátis por aparelho; com conta: 1 grátis no total)
-              </>
+              <>Sua carta está na mesa — avance para descobrir a leitura completa quando quiser.</>
             ) : (
               <>
-                A primeira carta já foi revelada no funil —{" "}
-                <span className="text-foreground/90 font-medium">toque nas outras</span> para seguir a tiragem · depois,{" "}
-                <span className="text-foreground/90 font-medium">interpretação com IA</span> (sem login: 1 grátis por
-                aparelho; com conta: 1 grátis no total)
+                Toque nas outras cartas para seguir a tiragem — depois,{" "}
+                <span className="text-foreground/90 font-medium">descubra a resposta completa</span>.
               </>
             )
           ) : (
             <>
-              <span className="text-foreground/90 font-medium">1.</span> Escolha o tipo de tiragem ·{" "}
-              <span className="text-foreground/90 font-medium">2.</span> Inicie e vire cada carta ·{" "}
-              <span className="text-foreground/90 font-medium">3.</span> Peça a interpretação com IA (sem login: 1 grátis
-              por aparelho; com conta: 1 grátis no total)
+              <span className="text-foreground/90 font-medium">1.</span> Escolha a tiragem ·{" "}
+              <span className="text-foreground/90 font-medium">2.</span> Revele cada carta ·{" "}
+              <span className="text-foreground/90 font-medium">3.</span> Veja sua leitura completa
             </>
           )}
         </p>
 
-        <div className="max-w-2xl mx-auto mb-10 rounded-lg border border-border/60 bg-muted/15 px-4 py-3 text-left">
-          <p className="font-display text-[10px] tracking-[0.2em] uppercase text-muted-foreground mb-1.5">
-            Aviso
-          </p>
-          <p className="text-xs text-muted-foreground leading-relaxed font-body">
-            As leituras e a interpretação por IA são apenas entretenimento e reflexão pessoal. Não leve os resultados como
-            verdade absoluta nem como orientação profissional (saúde, jurídica, financeira ou psicológica). Não nos
-            responsabilizamos por decisões ou consequências decorrentes do uso deste conteúdo.
-          </p>
-        </div>
+        <p className="text-[11px] text-muted-foreground/90 font-body mb-8 max-w-md mx-auto">
+          <a href="#avisos-importantes" className="text-primary/90 underline-offset-2 hover:underline">
+            Avisos importantes
+          </a>
+        </p>
 
         {!hasStarted ? (
           <>
@@ -354,11 +342,11 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   </motion.button>
                   {user && quotaExhausted && (
                     <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
-                      Sem vaga grátis na conta e sem créditos.{" "}
+                      Sua leitura gratuita já foi usada.{" "}
                       <Link to="/creditos" className="text-primary underline underline-offset-2">
-                        Comprar créditos
+                        Ver créditos
                       </Link>{" "}
-                      para novas leituras com IA.
+                      para continuar.
                     </p>
                   )}
                 </div>
@@ -534,7 +522,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 }
                 className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
               >
-                Ver interpretação com IA
+                Descobrir a resposta completa
               </button>
             )}
           </div>

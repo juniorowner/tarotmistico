@@ -52,7 +52,7 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder="Digite sua pergunta…"
+            placeholder="O que você quer descobrir?"
             className="w-full px-4 py-3 rounded-lg bg-background/90 border border-border text-foreground placeholder:text-muted-foreground font-body text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
           <button

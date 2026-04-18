@@ -142,15 +142,33 @@ const Index = () => {
           </div>
         )}
 
-        <footer className="mt-8 py-5 px-4 text-center border-t border-border/50">
+        <footer id="avisos-importantes" className="mt-8 py-5 px-4 text-center border-t border-border/50 scroll-mt-24">
           <p className="font-display text-xs tracking-[0.3em] uppercase text-muted-foreground">
             ✧ Tarot Místico ✧
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground/90 mt-2 max-w-2xl mx-auto font-body leading-snug">
-            ⚠️ O Tarot Místico é uma ferramenta de reflexão e autoconhecimento. As leituras servem como guia espiritual e
-            não substituem aconselhamento médico, jurídico, financeiro ou profissional. Use sua intuição e
-            responsabilidade pessoal ao tomar decisões importantes.
+            Entretenimento e reflexão — não substitui orientação profissional (saúde, jurídica, financeira ou psicológica).
           </p>
+          <details className="mt-4 max-w-2xl mx-auto text-left">
+            <summary className="text-xs font-body text-primary cursor-pointer list-none text-center [&::-webkit-details-marker]:hidden">
+              <span className="underline underline-offset-2">Avisos importantes (completo)</span>
+            </summary>
+            <div className="mt-3 text-[11px] text-muted-foreground font-body leading-relaxed space-y-3 border border-border/50 rounded-lg p-3 bg-muted/20">
+              <p>
+                As leituras e textos por IA são entretenimento e reflexão pessoal. Não leve os resultados como verdade
+                absoluta nem como decisão médica, jurídica, financeira ou psicológica. Não nos responsabilizamos por
+                decisões ou consequências do uso deste conteúdo.
+              </p>
+              <p>
+                Não processamos pedidos sobre autoferimento, violência a pessoas ou atos ilegais — procure ajuda
+                profissional ou emergência se precisar. No Brasil, apoio emocional: CVV 188.
+              </p>
+              <p>
+                A IA não faz diagnóstico médico, não confirma gravidez e não prevê morte com certeza ou prazo. Use como
+                reflexão, nunca como substituto de orientação profissional.
+              </p>
+            </div>
+          </details>
         </footer>
       </div>
     </>

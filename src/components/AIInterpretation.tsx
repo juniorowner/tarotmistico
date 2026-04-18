@@ -40,7 +40,7 @@ const AIInterpretation = ({
   guestMode = false,
   onGuestConsumed,
 }: AIInterpretationProps) => {
-  const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
+  const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota } = useAuth();
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ const AIInterpretation = ({
     if (!user && !guestMode) {
       trackEvent("ai_interpretation_auth_required");
       openAuthDialog(
-        "Inicie sessão para ver a interpretação por IA. A vaga grátis da conta e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+        "Inicie sessão para ver a leitura completa. Ela fica disponível depois de revelar todas as cartas."
       );
       return;
     }
@@ -76,7 +76,7 @@ const AIInterpretation = ({
     if (guestMode && hasGuestOnceBeenConsumedLocally()) {
       trackEvent("guest_interpretation_blocked_already_used");
       openAuthDialog(
-        "Você já usou a interpretação por IA grátis neste aparelho. Entre ou crie uma conta para novas interpretações com IA — pode continuar sorteando e vendo as cartas acima quantas vezes quiser."
+        "Você já usou a leitura completa grátis neste aparelho. Entre ou crie conta para continuar — as cartas acima você pode explorar à vontade."
       );
       return;
     }
@@ -105,9 +105,7 @@ const AIInterpretation = ({
         });
         markGuestOnceConsumedLocally();
         onGuestConsumed?.();
-        setQuotaHint(
-          "Interpretação IA grátis já utilizada neste aparelho. Pode repetir a tiragem; para nova IA, entre ou cadastre-se."
-        );
+        setQuotaHint("Para uma nova leitura completa, entre ou cadastre-se — ou sorteie de novo só para ver as cartas.");
       } else {
         const result = await requestAIInterpretation(
           {
@@ -128,9 +126,7 @@ const AIInterpretation = ({
         });
         await refreshAiQuota();
         if (result.used_credit) {
-          setQuotaHint("Esta consulta usou 1 crédito comprado (contabilizado ao concluir a tiragem).");
-        } else if (typeof result.free_remaining_today === "number") {
-          setQuotaHint(`Vagas grátis restantes na conta: ${result.free_remaining_today}.`);
+          setQuotaHint("Esta leitura usou um crédito da sua conta.");
         }
       }
     } catch (err) {
@@ -140,7 +136,7 @@ const AIInterpretation = ({
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "truncated" });
           setError(
             e.message ||
-              "A leitura veio incompleta. Toque em «Gerar interpretação» de novo — a consulta grátis ainda não foi contabilizada neste dispositivo."
+              "A leitura veio incompleta. Toque em «Descobrir a resposta completa» de novo."
           );
           return;
         }
@@ -168,7 +164,7 @@ const AIInterpretation = ({
       }
       if (e.message === "AUTH_REQUIRED" || e.code === "AUTH_REQUIRED") {
         openAuthDialog(
-          "Inicie sessão para ver a interpretação por IA. A vaga grátis da conta e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+          "Inicie sessão para ver a leitura completa. Ela fica disponível depois de revelar todas as cartas."
         );
         return;
       }
@@ -184,7 +180,7 @@ const AIInterpretation = ({
         trackEvent("ai_interpretation_quota_exceeded");
         setError(
           e.message ||
-            "A vaga grátis da conta já foi usada. Compre créditos para novas interpretações com IA."
+            "Sua leitura gratuita já foi utilizada. Com créditos você continua quando quiser."
         );
         setErrorFooter("quota");
         return;
@@ -229,30 +225,21 @@ const AIInterpretation = ({
       animate={{ opacity: 1, y: 0 }}
       className="max-w-2xl mx-auto mt-8 scroll-mt-28"
     >
-      {user && (
-        <p className="text-xs text-center font-body mb-3 px-2 py-2 rounded-lg bg-primary/10 border border-primary/20 text-foreground/90">
-          <Sparkles className="inline w-3.5 h-3.5 text-primary mr-1 align-text-bottom" />
-          <strong>{aiQuota?.free_remaining_today ?? 0}</strong> de 1 vaga grátis restante na conta ·{" "}
-          <strong>{aiQuota?.credits_balance ?? 0}</strong> créditos comprados ·{" "}
-          <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/80">
-            COMPRAR CRÉDITOS
-          </Link>
-        </p>
-      )}
-      <p className="text-xs text-center text-muted-foreground font-body mb-4 px-2 leading-relaxed">
+      <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
         {guestMode ? (
           <>
-            Baralho completo com <strong className="text-foreground">78 cartas</strong>. Você pode{" "}
-            <strong className="text-foreground">sortear e ver as cartas quantas vezes quiser</strong> sem login. A{" "}
-            <strong className="text-foreground">interpretação com IA</strong> inclui{" "}
-            <strong className="text-foreground">1 uso grátis por aparelho</strong>; depois, entre ou cadastre-se para
-            novas interpretações com IA.
+            Sorteie e veja as cartas à vontade, com ou sem conta.{" "}
+            <strong className="text-foreground/95">A primeira leitura completa neste aparelho é gratuita</strong> — depois,
+            entre ou cadastre-se para continuar.
           </>
         ) : (
           <>
-            O baralho tem <strong className="text-foreground">78 cartas</strong> (Arcanos Maiores e Menores). A conta
-            inclui <strong className="text-foreground">1 consulta grátis com IA no total</strong> após concluir a tiragem;
-            depois disso, <strong className="text-foreground">1 crédito por consulta</strong>.
+            <span className="text-primary">✨</span>{" "}
+            <strong className="text-foreground/95">Sua primeira interpretação completa é gratuita.</strong> Depois, você
+            pode continuar com créditos.{" "}
+            <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/85">
+              Ver créditos
+            </Link>
           </>
         )}
       </p>
@@ -293,16 +280,14 @@ const AIInterpretation = ({
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Sua pergunta para a IA (opcional)…"
+            placeholder="O que você quer descobrir?"
             className="w-full px-4 py-3 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground font-body text-lg focus:outline-none focus:border-primary/60 transition-colors"
           />
-          <p className="text-[11px] text-center text-muted-foreground/85 font-body px-1 leading-snug">
-            Pedidos sobre autoferimento, violência a pessoas ou atos ilegais não são aceites — procure ajuda
-            profissional ou emergência se precisar.
-          </p>
-          <p className="text-[11px] text-center text-muted-foreground/85 font-body px-1 leading-snug">
-            A IA não faz diagnóstico médico, não confirma gravidez e não prevê morte com certeza ou prazo. Use como
-            reflexão, nunca como substituto de orientação profissional.
+          <p className="text-[11px] text-center text-muted-foreground/80 font-body px-1">
+            <a href="#avisos-importantes" className="text-primary/90 underline-offset-2 hover:underline">
+              Avisos importantes
+            </a>{" "}
+            sobre uso responsável.
           </p>
           <motion.button
             whileHover={{ scale: authLoading ? 1 : 1.03 }}
@@ -312,7 +297,7 @@ const AIInterpretation = ({
             className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
           >
             <Sparkles className="w-4 h-4" />
-            Ver interpretação completa com IA
+            Descobrir a resposta completa
           </motion.button>
         </div>
       )}
@@ -369,9 +354,7 @@ const AIInterpretation = ({
             )}
             {errorFooter === "included" && (
               <p className="text-xs text-muted-foreground pl-7 font-body">
-                Lembrete: a sua conta inclui{" "}
-                <strong className="text-foreground/90">1 consulta grátis no total</strong> (ao concluir a tiragem). Depois
-                disso, são necessários créditos para novas consultas com IA.
+                A primeira leitura completa na conta é gratuita; depois, use créditos para novas leituras completas.
               </p>
             )}
           </motion.div>
@@ -396,14 +379,14 @@ const AIInterpretation = ({
               {interpretation}
             </div>
             <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
-              <span className="font-semibold text-foreground/75">Aviso:</span> o texto acima é gerado por IA para
-              entretenimento e reflexão. Não o trate como previsão nem como conselho profissional; não nos
-              responsabilizamos por decisões ou comportamentos baseados nele.
+              Texto gerado por IA para reflexão — não substitui acompanhamento profissional.{" "}
+              <a href="#avisos-importantes" className="text-primary/90 underline-offset-2 hover:underline">
+                Avisos completos
+              </a>
             </p>
             <p className="text-xs text-muted-foreground font-body leading-relaxed pt-2">
-              O uso grátis ou o crédito desta tiragem foi aplicado ao concluir a consulta. Pode{" "}
-              <strong className="text-foreground/90">gerar outra interpretação</strong> na mesma tiragem sem pagar de novo;
-              uma <strong className="text-foreground/90">nova consulta</strong> (nova tiragem) é que contaria outra vez.
+              Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo extra; uma{" "}
+              <strong className="text-foreground/90">nova tiragem</strong> usa nova consulta (grátis ou crédito).
             </p>
             <motion.button
               type="button"
