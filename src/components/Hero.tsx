@@ -62,20 +62,20 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
             Descobrir agora
           </button>
 
-          <ul className="pt-4 grid gap-2 text-left max-w-sm mx-auto text-sm text-muted-foreground font-body">
-            <li className="flex items-center gap-2">
+          <div className="pt-4 flex flex-wrap justify-center items-center gap-x-3 sm:gap-x-4 gap-y-2 text-sm text-muted-foreground font-body px-1 max-w-3xl mx-auto">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <span aria-hidden>🔮</span>
-              <span>+10.000 leituras realizadas</span>
-            </li>
-            <li className="flex items-center gap-2">
+              +10.000 leituras realizadas
+            </span>
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <span aria-hidden>⚡</span>
-              <span>Resultado em segundos</span>
-            </li>
-            <li className="flex items-center gap-2">
+              Resultado em segundos
+            </span>
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <span aria-hidden>💬</span>
-              <span>100% privado</span>
-            </li>
-          </ul>
+              100% privado
+            </span>
+          </div>
 
           {onOpenFullCatalog && (
             <p className="pt-5 text-center">
