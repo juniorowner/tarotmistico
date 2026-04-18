@@ -4,9 +4,11 @@ import heroBg from "@/assets/hero-bg.jpg";
 
 type HeroProps = {
   onDiscover: (question: string) => void;
+  /** Atalho discreto para quem quer Cruz Celta / catálogo sem passar pelo funil. */
+  onOpenFullCatalog?: () => void;
 };
 
-const Hero = ({ onDiscover }: HeroProps) => {
+const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
   const [question, setQuestion] = useState("");
 
   const submit = () => {
@@ -75,7 +77,19 @@ const Hero = ({ onDiscover }: HeroProps) => {
             </li>
           </ul>
 
-          <p className="text-[11px] text-muted-foreground font-body text-center leading-snug pt-2">
+          {onOpenFullCatalog && (
+            <p className="pt-5 text-center">
+              <button
+                type="button"
+                onClick={onOpenFullCatalog}
+                className="text-xs text-muted-foreground/85 hover:text-primary font-body underline-offset-4 hover:underline transition-colors"
+              >
+                Catálogo completo — Cruz Celta e outras
+              </button>
+            </p>
+          )}
+
+          <p className="text-[11px] text-muted-foreground font-body text-center leading-snug pt-3">
             Entretenimento e reflexão — não substitui acompanhamento profissional.
           </p>
         </motion.div>

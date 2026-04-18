@@ -132,20 +132,7 @@ const Index = () => {
           <UserMenu />
         </SiteNavBar>
 
-        {phase === "hero" && (
-          <>
-            <Hero onDiscover={handleDiscover} />
-            <div className="text-center px-4 pb-10 -mt-4">
-              <button
-                type="button"
-                onClick={skipToCatalog}
-                className="text-sm text-muted-foreground hover:text-primary font-body underline underline-offset-4 transition-colors"
-              >
-                Ver todas as tiragens (Cruz Celta e outras)
-              </button>
-            </div>
-          </>
-        )}
+        {phase === "hero" && <Hero onDiscover={handleDiscover} onOpenFullCatalog={skipToCatalog} />}
         {phase === "choose" && (
           <ConversionChooseSpread
             question={question}
