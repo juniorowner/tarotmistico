@@ -10,6 +10,7 @@ import { trackEvent } from "@/lib/analytics";
 import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 import {
   GUEST_DEVICE_LIMIT_AFTER,
+  GUEST_DEVICE_LIMIT_AFTER_LINES,
   GUEST_DEVICE_LIMIT_BEFORE,
   hasGuestOnceBeenConsumedLocally,
 } from "@/lib/guestOnce";
@@ -346,13 +347,11 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   {!user && selectedSpread && !hasStarted && (
                     <p className="text-center text-xs sm:text-sm text-muted-foreground font-body max-w-sm px-2 leading-relaxed">
                       {hasGuestOnceBeenConsumedLocally() ? (
-                        <>
-                          <span className="text-foreground/90 font-medium">
-                            🔒 Sua leitura gratuita já foi usada
-                          </span>
+                        <span className="text-foreground/90">
+                          <span className="font-medium">{GUEST_DEVICE_LIMIT_AFTER_LINES[0]}</span>
                           {" · "}
-                          Entre para continuar
-                        </>
+                          {GUEST_DEVICE_LIMIT_AFTER_LINES[1]}
+                        </span>
                       ) : (
                         <span className="text-foreground/90">{GUEST_DEVICE_LIMIT_BEFORE}</span>
                       )}
@@ -476,8 +475,8 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 guestMode={!user}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");
-                  const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split("\n");
-                  toast.message(title, { description: rest.join("\n") || undefined });
+                  const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split(/\n+/).filter(Boolean);
+                  toast.message(title, { description: rest.join(" ") || undefined });
                 }}
               />
             )}

@@ -97,10 +97,6 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
               </button>
             </p>
           )}
-
-          <p className="text-[11px] text-muted-foreground font-body text-center leading-snug pt-3">
-            Entretenimento e reflexão — não substitui acompanhamento profissional.
-          </p>
         </motion.div>
 
         {[...Array(5)].map((_, i) => (

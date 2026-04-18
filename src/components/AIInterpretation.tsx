@@ -8,6 +8,7 @@ import { requestAIInterpretation } from "@/lib/ai";
 import {
   consumePendingGuestQuestion,
   GUEST_DEVICE_LIMIT_AFTER,
+  GUEST_DEVICE_LIMIT_AFTER_LINES,
   GUEST_DEVICE_LIMIT_BEFORE,
   hasGuestOnceBeenConsumedLocally,
   markGuestOnceConsumedLocally,
@@ -153,7 +154,6 @@ const AIInterpretation = ({
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "already_used" });
           onGuestConsumed?.();
           openAuthDialog(GUEST_DEVICE_LIMIT_AFTER);
-          setError("🔒 Sua leitura gratuita já foi usada.\n\nEntre para continuar.");
           return;
         }
         trackEvent("guest_interpretation_failed", {
@@ -250,17 +250,17 @@ const AIInterpretation = ({
         <p className="text-xs text-center text-primary font-body mb-2">A registar a consulta…</p>
       )}
       {user && consultCommitError && (
-        <p className="text-xs text-center text-destructive font-body mb-2 px-2">{consultCommitError}</p>
+        <p className="text-xs text-center font-body mb-2 px-2 text-[hsl(270_42%_72%)]">{consultCommitError}</p>
       )}
 
       {!interpretation && !isLoading && guestMode && hasGuestOnceBeenConsumedLocally() && (
         <div className="space-y-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-5 text-center">
           <p className="font-display text-sm text-primary tracking-wide uppercase">Interpretação IA</p>
           <p className="text-base md:text-lg text-foreground font-body font-medium leading-snug">
-            🔒 Sua leitura gratuita já foi usada
+            {GUEST_DEVICE_LIMIT_AFTER_LINES[0]}
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            Entre para continuar
+            {GUEST_DEVICE_LIMIT_AFTER_LINES[1]}
           </p>
           <button
             type="button"
@@ -372,9 +372,6 @@ const AIInterpretation = ({
               {interpretation}
             </div>
             <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
-              Texto gerado por IA para reflexão — não substitui acompanhamento profissional.
-            </p>
-            <p className="text-xs text-muted-foreground font-body leading-relaxed pt-2">
               Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo extra; cada{" "}
               <strong className="text-foreground/90">nova tiragem</strong> inicia uma consulta nova na sua conta.
             </p>

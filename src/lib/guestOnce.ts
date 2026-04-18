@@ -15,9 +15,14 @@ export const PENDING_GUEST_QUESTION_KEY = "tarot:pending-question:v1";
 /** Antes da 1ª interpretação IA sem conta (limite por aparelho). */
 export const GUEST_DEVICE_LIMIT_BEFORE = "✨ Você tem 1 leitura completa gratuita";
 
-/** Depois de usar no aparelho — modal e CTAs de login. */
-export const GUEST_DEVICE_LIMIT_AFTER =
-  "🔒 Sua leitura gratuita já foi usada\nEntre para continuar";
+/** Linhas do convite pós-leitura guest (conta / interpretação completa). */
+export const GUEST_DEVICE_LIMIT_AFTER_LINES = [
+  "✨ Há mais nessa leitura...",
+  "Desbloqueie a interpretação completa e descubra todos os detalhes.",
+] as const;
+
+/** Depois de usar no aparelho — modal, toasts e CTAs de login. */
+export const GUEST_DEVICE_LIMIT_AFTER = GUEST_DEVICE_LIMIT_AFTER_LINES.join("\n\n");
 
 /** Lê e apaga a pergunta guardada pelo Hero (sessionStorage). */
 export function consumePendingGuestQuestion(): string {
