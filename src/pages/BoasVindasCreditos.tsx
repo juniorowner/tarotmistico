@@ -6,7 +6,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAiQuota, type AiQuotaResponse } from "@/lib/aiQuota";
 import { Button } from "@/components/ui/button";
-import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
+import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 
 type QuotaState = { status: "loading" } | { status: "error" } | { status: "ok"; data: AiQuotaResponse };
 
@@ -73,7 +73,6 @@ const BoasVindasCreditos = () => {
   }
 
   const hasWelcomeFree = quotaState.data.free_remaining_today > 0;
-  const credits = quotaState.data.credits_balance;
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,19 +109,16 @@ const BoasVindasCreditos = () => {
             </>
           ) : (
             <>
-              <p className="text-sm text-primary/90 font-body mb-3">Olá, {friendlyName}</p>
               <h1 className="font-display text-3xl md:text-5xl text-gold-gradient leading-tight">
-                Bem-vindo de volta
+                ✨ Ainda há mais para descobrir
               </h1>
 
               <p className="mt-6 text-muted-foreground font-body text-base md:text-lg leading-relaxed">
-                A sua primeira interpretação completa com IA gratuita já foi utilizada nesta conta.
+                Sua primeira leitura já revelou algo importante…
               </p>
 
               <p className="mt-3 text-foreground/90 font-body text-base md:text-lg leading-relaxed">
-                {credits > 0
-                  ? `Tem saldo para ${credits} ${credits === 1 ? "nova leitura completa" : "novas leituras completas"} com IA — ou continue sorteando cartas no início.`
-                  : "Faça novas tiragens no início. Quando quiser outra leitura completa com IA, abra a página de planos pelo menu da conta."}
+                Agora você pode continuar e aprofundar sua resposta.
               </p>
 
               <div className="mt-10 flex justify-center">
@@ -130,7 +126,7 @@ const BoasVindasCreditos = () => {
                   to="/"
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
                 >
-                  Ir para o início
+                  {CTA_CONTINUE_READING}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
