@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { fetchAdminOverview, type AdminOverviewResponse } from "@/lib/admin";
+import {
+  fetchAdminOverview,
+  fetchAdminVisitorSessionDetail,
+  type AdminOverviewResponse,
+  type AdminVisitorSessionDetailResponse,
+} from "@/lib/admin";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function fmtDate(v: string | null | undefined) {
   if (!v) return "-";
@@ -15,6 +27,10 @@ const Admin = () => {
   const [data, setData] = useState<AdminOverviewResponse | null>(null);
   const [query, setQuery] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [funnelSessionId, setFunnelSessionId] = useState<string | null>(null);
+  const [funnelDetail, setFunnelDetail] = useState<AdminVisitorSessionDetailResponse | null>(null);
+  const [funnelLoading, setFunnelLoading] = useState(false);
+  const [funnelError, setFunnelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!adminKey) {
@@ -108,6 +124,41 @@ const Admin = () => {
     );
   }, [data, q]);
 
+  const visitorSessionsFiltered = useMemo(() => {
+    const rows = data?.visitor_sessions ?? [];
+    if (!q) return rows;
+    return rows.filter((s) =>
+      [s.id, s.visitor_client_id, s.entry_path || "", s.referrer || "", s.user_agent || ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [data, q]);
+
+  useEffect(() => {
+    if (!funnelSessionId || !adminKey) return;
+    let cancelled = false;
+    setFunnelLoading(true);
+    setFunnelError(null);
+    void fetchAdminVisitorSessionDetail(adminKey, funnelSessionId)
+      .then((d) => {
+        if (!cancelled) {
+          setFunnelDetail(d);
+          setFunnelLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setFunnelDetail(null);
+          setFunnelError(e instanceof Error ? e.message : "Erro ao carregar sessão.");
+          setFunnelLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [funnelSessionId, adminKey]);
+
   const uniqueOrderStatuses = useMemo(() => {
     const set = new Set<string>();
     for (const o of data?.orders ?? []) set.add(o.status);
@@ -175,6 +226,122 @@ const Admin = () => {
                 </select>
               </div>
             </section>
+
+            <section className="rounded-xl border border-border bg-card/40 p-4">
+              <h2 className="font-display text-sm uppercase tracking-wider text-primary mb-2">
+                Funil — sessões de visitantes
+                <span className="text-muted-foreground font-body normal-case text-xs ml-2">
+                  ({(data.visitor_sessions ?? []).length} carregadas)
+                </span>
+              </h2>
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                Cliques (captura), scroll a cada ~15%, rotas SPA, visibilidade da página, redimensionamento e saída. O mesmo filtro de busca acima aplica-se a visitante, caminho e user-agent. Requer a migration{" "}
+                <code className="text-foreground">20260427120000_visitor_analytics</code> e deploy das funções{" "}
+                <code className="text-foreground">visitor-analytics-ingest</code> e{" "}
+                <code className="text-foreground">admin-visitor-session</code>.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-muted-foreground">
+                    <tr className="text-left border-b border-border">
+                      <th className="py-2 pr-3">Última atividade</th>
+                      <th className="py-2 pr-3">Visitante</th>
+                      <th className="py-2 pr-3">Entrada</th>
+                      <th className="py-2 pr-3">Auth</th>
+                      <th className="py-2 pr-3">Terminou</th>
+                      <th className="py-2">Eventos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.visitor_sessions ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-muted-foreground">
+                          Nenhuma sessão ainda — confirme a migration e o deploy do ingest, ou aguarde tráfego.
+                        </td>
+                      </tr>
+                    ) : visitorSessionsFiltered.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-muted-foreground">
+                          Nenhum resultado para a busca atual.
+                        </td>
+                      </tr>
+                    ) : (
+                      visitorSessionsFiltered.map((s) => (
+                        <tr key={s.id} className="border-b border-border/60 align-top">
+                          <td className="py-2 pr-3 whitespace-nowrap">{fmtDate(s.last_seen_at)}</td>
+                          <td className="py-2 pr-3 font-mono text-xs break-all max-w-[10rem]">{s.visitor_client_id}</td>
+                          <td className="py-2 pr-3 break-all max-w-xs text-xs">{s.entry_path || "—"}</td>
+                          <td className="py-2 pr-3">{s.is_authenticated ? "Sim" : "Não"}</td>
+                          <td className="py-2 pr-3">{s.ended_at ? fmtDate(s.ended_at) : "—"}</td>
+                          <td className="py-2">
+                            <button
+                              type="button"
+                              onClick={() => setFunnelSessionId(s.id)}
+                              className="text-primary hover:underline font-body"
+                            >
+                              Ver eventos
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <Dialog
+              open={funnelSessionId != null}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setFunnelSessionId(null);
+                  setFunnelDetail(null);
+                  setFunnelError(null);
+                }
+              }}
+            >
+              <DialogContent className="max-w-3xl max-h-[min(88vh,720px)] overflow-y-auto border-border bg-card">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-primary">Sessão — funil</DialogTitle>
+                  <DialogDescription className="text-xs font-body">
+                    Dados da sessão e lista de eventos por ordem de tempo (máx. 5000 por pedido).
+                  </DialogDescription>
+                </DialogHeader>
+                {funnelLoading && <p className="text-sm text-muted-foreground font-body">A carregar…</p>}
+                {funnelError && <p className="text-sm text-destructive font-body">{funnelError}</p>}
+                {funnelDetail && !funnelLoading && (
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground font-display mb-1">Sessão</p>
+                      <pre className="text-[11px] bg-muted/30 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap break-all font-mono">
+                        {JSON.stringify(funnelDetail.session, null, 2)}
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground font-display mb-2">
+                        Eventos ({funnelDetail.event_count})
+                      </p>
+                      <ul className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                        {funnelDetail.events.map((ev) => (
+                          <li
+                            key={ev.id}
+                            className="border-b border-border/50 pb-3 text-xs font-mono text-foreground/90"
+                          >
+                            <div className="flex flex-wrap gap-x-2 gap-y-1">
+                              <span className="text-primary/90">{fmtDate(ev.recorded_at)}</span>
+                              <strong className="text-primary">{ev.event_type}</strong>
+                            </div>
+                            <pre className="mt-1 text-[11px] text-muted-foreground whitespace-pre-wrap break-all">
+                              {JSON.stringify(ev.payload, null, 2)}
+                            </pre>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             <section className="rounded-xl border border-border bg-card/40 p-4">
               <h2 className="font-display text-sm uppercase tracking-wider text-primary mb-3">Cadastrados</h2>

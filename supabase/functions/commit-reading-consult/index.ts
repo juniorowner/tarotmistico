@@ -144,7 +144,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             error:
-              "A consulta gratuita da sua conta já foi utilizada. Compre créditos para novas leituras completas com interpretação por IA.",
+              "✨ Há mais nessa leitura...\n\nDesbloqueie a interpretação completa e descubra todos os detalhes.",
             code: "QUOTA_EXCEEDED",
             free_per_account: FREE_CONSULTS_PER_ACCOUNT_LIFETIME,
             consults_completed: n,

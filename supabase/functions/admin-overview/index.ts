@@ -49,6 +49,7 @@ serve(async (req) => {
       guestCountRes,
       aiReadingsRes,
       aiReadingsCountRes,
+      visitorSessionsRes,
     ] = await Promise.all([
       admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
       admin.from("profiles").select("id, credits, first_free_full_consult_used, created_at"),
@@ -74,6 +75,13 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(300),
       admin.from("ai_readings").select("id", { count: "exact", head: true }),
+      admin
+        .from("visitor_sessions")
+        .select(
+          "id, visitor_client_id, started_at, last_seen_at, ended_at, entry_path, referrer, user_agent, language, is_authenticated, auth_user_id, screen_w, screen_h, viewport_w, viewport_h"
+        )
+        .order("last_seen_at", { ascending: false })
+        .limit(150),
     ]);
 
     const users = usersRes.data.users ?? [];
@@ -92,6 +100,9 @@ serve(async (req) => {
     }
     if (aiReadingsCountRes.error) {
       console.error("admin-overview ai_readings count:", aiReadingsCountRes.error);
+    }
+    if (visitorSessionsRes.error) {
+      console.error("admin-overview visitor_sessions:", visitorSessionsRes.error);
     }
 
     const guest_logs = (guestLogsRes.data ?? []).map((row) => {
@@ -129,6 +140,8 @@ serve(async (req) => {
     });
     const ai_question_logs_total = aiReadingsCountRes.count ?? ai_question_logs.length;
 
+    const visitor_sessions = visitorSessionsRes.error ? [] : (visitorSessionsRes.data ?? []);
+
     return new Response(
       JSON.stringify({
         users: users.map((u) => ({
@@ -150,6 +163,7 @@ serve(async (req) => {
         guest_logs_total,
         ai_question_logs,
         ai_question_logs_total,
+        visitor_sessions,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

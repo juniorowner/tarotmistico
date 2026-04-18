@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AuthDialog } from "./components/AuthDialog";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { RouteAnalytics } from "./components/RouteAnalytics";
+import { VisitorTracking } from "./components/VisitorTracking";
 import Index from "./pages/Index";
 import Diary from "./pages/Diary";
 import Creditos from "./pages/Creditos";
@@ -52,6 +53,7 @@ const App = () => {
             <BrowserRouter>
               <ScrollToTop />
               <RouteAnalytics />
+              <VisitorTracking />
               <AuthDialog />
               <Routes>
                 <Route path="/" element={<Index />} />

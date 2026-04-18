@@ -37,3 +37,9 @@ verify_jwt = false
 
 [functions.guest-interpret-once]
 verify_jwt = false
+
+[functions.visitor-analytics-ingest]
+verify_jwt = false
+
+[functions.admin-visitor-session]
+verify_jwt = false

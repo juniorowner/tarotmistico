@@ -62,6 +62,38 @@ export interface AdminAiQuestionLog {
   interpretation_preview: string;
 }
 
+/** Sessão de rastreio de funil (visitor_sessions). */
+export interface AdminVisitorSession {
+  id: string;
+  visitor_client_id: string;
+  started_at: string;
+  last_seen_at: string;
+  ended_at: string | null;
+  entry_path: string | null;
+  referrer: string | null;
+  user_agent: string | null;
+  language: string | null;
+  is_authenticated: boolean;
+  auth_user_id: string | null;
+  screen_w: number | null;
+  screen_h: number | null;
+  viewport_w: number | null;
+  viewport_h: number | null;
+}
+
+export interface AdminVisitorEvent {
+  id: number;
+  recorded_at: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+}
+
+export interface AdminVisitorSessionDetailResponse {
+  session: AdminVisitorSession & Record<string, unknown>;
+  events: AdminVisitorEvent[];
+  event_count: number;
+}
+
 export interface AdminOverviewResponse {
   users: AdminUser[];
   profiles: AdminProfile[];
@@ -73,6 +105,8 @@ export interface AdminOverviewResponse {
   /** Últimas interpretações IA (pergunta + prévia), tabela ai_readings. */
   ai_question_logs?: AdminAiQuestionLog[];
   ai_question_logs_total?: number;
+  /** Últimas sessões de rastreio (migration visitor_analytics). */
+  visitor_sessions?: AdminVisitorSession[];
 }
 
 export interface AdminUserDetailResponse {
@@ -119,6 +153,22 @@ export async function fetchAdminUserDetail(
     });
     if (error) throw error;
     return data as AdminUserDetailResponse;
+  } catch (error) {
+    throw new Error(toAdminErrorMessage(error));
+  }
+}
+
+export async function fetchAdminVisitorSessionDetail(
+  adminKey: string,
+  sessionId: string
+): Promise<AdminVisitorSessionDetailResponse> {
+  try {
+    const { data, error } = await supabase.functions.invoke("admin-visitor-session", {
+      headers: { "x-admin-key": adminKey },
+      body: { session_id: sessionId },
+    });
+    if (error) throw error;
+    return data as AdminVisitorSessionDetailResponse;
   } catch (error) {
     throw new Error(toAdminErrorMessage(error));
   }
