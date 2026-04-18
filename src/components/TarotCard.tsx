@@ -10,6 +10,8 @@ interface TarotCardComponentProps {
   isRevealed: boolean;
   onReveal: () => void;
   delay: number;
+  /** Se true, a frente da carta não mostra nome (ex.: pré-visualização do funil com título abaixo). */
+  hideFaceTitle?: boolean;
 }
 
 const TarotCardComponent = ({
@@ -19,6 +21,7 @@ const TarotCardComponent = ({
   isRevealed,
   onReveal,
   delay,
+  hideFaceTitle = false,
 }: TarotCardComponentProps) => {
   return (
     <motion.div
@@ -59,7 +62,7 @@ const TarotCardComponent = ({
               transform: isRevealed && isReversed ? "rotateY(180deg) rotateZ(180deg)" : "rotateY(180deg)",
             }}
           >
-            {card && (
+            {card && !hideFaceTitle && (
               <>
                 <h3 className="mb-1 font-display text-sm font-semibold text-primary md:text-base">{card.name}</h3>
                 <p className="mb-2 text-xs italic text-muted-foreground">{card.nameEn}</p>
@@ -69,6 +72,11 @@ const TarotCardComponent = ({
                   </p>
                 )}
               </>
+            )}
+            {card && hideFaceTitle && isRevealed && (
+              <span className="font-display text-xs tracking-[0.3em] text-primary/35 uppercase" aria-hidden>
+                ✦
+              </span>
             )}
           </div>
         </motion.div>
