@@ -283,12 +283,6 @@ const AIInterpretation = ({
             placeholder="O que você quer descobrir?"
             className="w-full px-4 py-3 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground font-body text-lg focus:outline-none focus:border-primary/60 transition-colors"
           />
-          <p className="text-[11px] text-center text-muted-foreground/80 font-body px-1">
-            <a href="#avisos-importantes" className="text-primary/90 underline-offset-2 hover:underline">
-              Avisos importantes
-            </a>{" "}
-            sobre uso responsável.
-          </p>
           <motion.button
             whileHover={{ scale: authLoading ? 1 : 1.03 }}
             whileTap={{ scale: authLoading ? 1 : 0.97 }}
@@ -379,10 +373,7 @@ const AIInterpretation = ({
               {interpretation}
             </div>
             <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
-              Texto gerado por IA para reflexão — não substitui acompanhamento profissional.{" "}
-              <a href="#avisos-importantes" className="text-primary/90 underline-offset-2 hover:underline">
-                Avisos completos
-              </a>
+              Texto gerado por IA para reflexão — não substitui acompanhamento profissional.
             </p>
             <p className="text-xs text-muted-foreground font-body leading-relaxed pt-2">
               Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo extra; uma{" "}

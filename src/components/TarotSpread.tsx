@@ -316,12 +316,6 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           )}
         </p>
 
-        <p className="text-[11px] text-muted-foreground/90 font-body mb-8 max-w-md mx-auto">
-          <a href="#avisos-importantes" className="text-primary/90 underline-offset-2 hover:underline">
-            Avisos importantes
-          </a>
-        </p>
-
         {!hasStarted ? (
           <>
             <SpreadSelector onSelect={setSelectedSpread} selected={selectedSpread} />
@@ -477,17 +471,6 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 >
                   <Save className="w-4 h-4" />
                   Salvar no Diário
-                </motion.button>
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={startReading}
-                  disabled={authLoading || quotaExhausted}
-                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:pointer-events-none"
-                >
-                  Repetir Leitura
                 </motion.button>
                 <motion.button
                   initial={{ opacity: 0 }}

@@ -17,6 +17,13 @@ import { allCards } from "@/data/tarotCards";
 import { PENDING_GUEST_QUESTION_KEY } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ConversionPhase = "hero" | "choose" | "loading" | "preview" | "reading";
 
@@ -31,6 +38,7 @@ const Index = () => {
   } | null>(null);
   const [spreadSession, setSpreadSession] = useState<TarotInitialReading | null>(null);
   const [readingKey, setReadingKey] = useState(0);
+  const [avisosOpen, setAvisosOpen] = useState(false);
 
   /** Ao sair da conta, volta ao início da home (funil + tiragem limpos). */
   useEffect(() => {
@@ -167,34 +175,46 @@ const Index = () => {
           </div>
         )}
 
-        <footer id="avisos-importantes" className="mt-8 py-5 px-4 text-center border-t border-border/50 scroll-mt-24">
-          <p className="font-display text-xs tracking-[0.3em] uppercase text-muted-foreground">
-            ✧ Tarot Místico ✧
+        <footer className="mt-8 py-5 px-4 text-center border-t border-border/50">
+          <p className="text-[11px] sm:text-xs text-muted-foreground/90 max-w-2xl mx-auto font-body leading-snug">
+            Entretenimento e reflexão — não substitui acompanhamento profissional.{" "}
+            <button
+              type="button"
+              onClick={() => setAvisosOpen(true)}
+              className="text-primary underline underline-offset-2 hover:opacity-90"
+            >
+              Avisos importantes
+            </button>
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground/90 mt-2 max-w-2xl mx-auto font-body leading-snug">
-            Entretenimento e reflexão — não substitui orientação profissional (saúde, jurídica, financeira ou psicológica).
-          </p>
-          <details className="mt-4 max-w-2xl mx-auto text-left">
-            <summary className="text-xs font-body text-primary cursor-pointer list-none text-center [&::-webkit-details-marker]:hidden">
-              <span className="underline underline-offset-2">Avisos importantes (completo)</span>
-            </summary>
-            <div className="mt-3 text-[11px] text-muted-foreground font-body leading-relaxed space-y-3 border border-border/50 rounded-lg p-3 bg-muted/20">
-              <p>
-                As leituras e textos por IA são entretenimento e reflexão pessoal. Não leve os resultados como verdade
-                absoluta nem como decisão médica, jurídica, financeira ou psicológica. Não nos responsabilizamos por
-                decisões ou consequências do uso deste conteúdo.
-              </p>
-              <p>
-                Não processamos pedidos sobre autoferimento, violência a pessoas ou atos ilegais — procure ajuda
-                profissional ou emergência se precisar. No Brasil, apoio emocional: CVV 188.
-              </p>
-              <p>
-                A IA não faz diagnóstico médico, não confirma gravidez e não prevê morte com certeza ou prazo. Use como
-                reflexão, nunca como substituto de orientação profissional.
-              </p>
-            </div>
-          </details>
         </footer>
+
+        <Dialog open={avisosOpen} onOpenChange={setAvisosOpen}>
+          <DialogContent className="w-[95vw] max-w-lg max-h-[88vh] overflow-hidden border-border bg-card p-0 gap-0 sm:rounded-xl">
+            <DialogHeader className="shrink-0 border-b border-border/70 p-4 pb-3 text-left">
+              <DialogTitle className="font-display text-lg text-primary">Avisos importantes</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Uso do serviço, limites da IA e recursos de apoio.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[calc(88vh-5.5rem)] overflow-y-auto px-4 py-4 text-left">
+              <div className="space-y-3 text-[13px] text-muted-foreground font-body leading-relaxed border border-border/50 rounded-lg p-3 bg-muted/20">
+                <p>
+                  As leituras e textos por IA são entretenimento e reflexão pessoal. Não leve os resultados como verdade
+                  absoluta nem como decisão médica, jurídica, financeira ou psicológica. Não nos responsabilizamos por
+                  decisões ou consequências do uso deste conteúdo.
+                </p>
+                <p>
+                  Não processamos pedidos sobre autoferimento, violência a pessoas ou atos ilegais — procure ajuda
+                  profissional ou emergência se precisar. No Brasil, apoio emocional: CVV 188.
+                </p>
+                <p>
+                  A IA não faz diagnóstico médico, não confirma gravidez e não prevê morte com certeza ou prazo. Use como
+                  reflexão, nunca como substituto de orientação profissional.
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
