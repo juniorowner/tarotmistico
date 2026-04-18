@@ -142,11 +142,11 @@ const Index = () => {
           </div>
         )}
 
-        <footer className="py-10 px-4 text-center border-t border-border/50">
+        <footer className="py-5 px-4 text-center border-t border-border/50">
           <p className="font-display text-xs tracking-[0.3em] uppercase text-muted-foreground">
             ✧ Tarot Místico ✧
           </p>
-          <p className="text-sm text-muted-foreground/90 mt-4 max-w-2xl mx-auto font-body leading-relaxed">
+          <p className="text-xs sm:text-sm text-muted-foreground/90 mt-2 max-w-2xl mx-auto font-body leading-snug">
             ⚠️ O Tarot Místico é uma ferramenta de reflexão e autoconhecimento. As leituras servem como guia espiritual e
             não substituem aconselhamento médico, jurídico, financeiro ou profissional. Use sua intuição e
             responsabilidade pessoal ao tomar decisões importantes.
