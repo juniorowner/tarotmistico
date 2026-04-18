@@ -40,7 +40,7 @@ const AIInterpretation = ({
   guestMode = false,
   onGuestConsumed,
 }: AIInterpretationProps) => {
-  const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota } = useAuth();
+  const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -225,24 +225,22 @@ const AIInterpretation = ({
       animate={{ opacity: 1, y: 0 }}
       className="max-w-2xl mx-auto mt-8 scroll-mt-28"
     >
-      <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
-        {guestMode ? (
-          <>
-            Sorteie e veja as cartas à vontade, com ou sem conta.{" "}
-            <strong className="text-foreground/95">A primeira leitura completa neste aparelho é gratuita</strong> — depois,
-            entre ou cadastre-se para continuar.
-          </>
-        ) : (
-          <>
-            <span className="text-primary">✨</span>{" "}
-            <strong className="text-foreground/95">Sua primeira interpretação completa é gratuita.</strong> Depois, você
-            pode continuar com créditos.{" "}
-            <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/85">
-              Ver créditos
-            </Link>
-          </>
-        )}
-      </p>
+      {guestMode ? (
+        <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
+          Sorteie e veja as cartas à vontade, com ou sem conta.{" "}
+          <strong className="text-foreground/95">A primeira leitura completa neste aparelho é gratuita</strong> — depois,
+          entre ou cadastre-se para continuar.
+        </p>
+      ) : aiQuota && aiQuota.free_remaining_today > 0 ? (
+        <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
+          <span className="text-primary">✨</span>{" "}
+          <strong className="text-foreground/95">Sua primeira interpretação completa é gratuita.</strong> Depois, você
+          pode continuar com créditos.{" "}
+          <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/85">
+            Ver créditos
+          </Link>
+        </p>
+      ) : null}
 
       {user && consultCommitLoading && (
         <p className="text-xs text-center text-primary font-body mb-2">A registar a consulta…</p>

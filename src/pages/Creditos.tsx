@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Sparkles, CreditCard, Bell, BellOff } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, CreditCard, Bell, BellOff, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +34,15 @@ function translatePaymentStatus(statusRaw: string): string {
     failed: "Falhou",
   };
   return labels[status] ?? (status ? status.replace(/_/g, " ") : "Desconhecido");
+}
+
+const PIX_MODAL_VALIDITY_SECONDS = 5 * 60;
+
+function formatCountdownMmSs(totalSec: number): string {
+  const s = Math.max(0, totalSec);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
 function translateLedgerEventType(eventTypeRaw: string): string {
@@ -85,6 +94,7 @@ const Creditos = () => {
   };
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
+  const [pixCountdownSec, setPixCountdownSec] = useState<number | null>(null);
 
   const refreshLedger = useCallback(async () => {
     if (!user) {
@@ -302,6 +312,21 @@ const Creditos = () => {
     };
   }, [checkoutOpen, checkoutPaymentId, refreshAiQuota, refreshOrders]);
 
+  useEffect(() => {
+    if (!checkoutOpen || !checkoutPaymentId) {
+      setPixCountdownSec(null);
+      return;
+    }
+    let seconds = PIX_MODAL_VALIDITY_SECONDS;
+    setPixCountdownSec(seconds);
+    const id = window.setInterval(() => {
+      seconds -= 1;
+      setPixCountdownSec(Math.max(0, seconds));
+      if (seconds <= 0) window.clearInterval(id);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [checkoutOpen, checkoutPaymentId]);
+
   return (
     <>
       <SEO
@@ -325,9 +350,30 @@ const Creditos = () => {
               Créditos IA
             </h1>
             <p className="text-muted-foreground font-body max-w-xl mx-auto text-sm leading-relaxed">
-              <span className="text-primary">✨</span>{" "}
-              <strong className="text-foreground">Sua primeira interpretação completa é gratuita.</strong> Depois, você
-              pode continuar com créditos — cada nova leitura completa usa 1 crédito.
+              {!user ? (
+                <>
+                  <span className="text-primary">✨</span>{" "}
+                  <strong className="text-foreground">Sua primeira interpretação completa é gratuita.</strong> Depois, você
+                  pode continuar com créditos — cada nova leitura completa usa 1 crédito.
+                </>
+              ) : freeRem == null ? (
+                <>
+                  <span className="text-primary">✨</span> A carregar informações da sua conta…
+                </>
+              ) : freeRem >= 1 ? (
+                <>
+                  <span className="text-primary">✨</span>{" "}
+                  <strong className="text-foreground">Sua primeira interpretação completa é gratuita.</strong> Depois, você
+                  pode continuar com créditos — cada nova leitura completa usa 1 crédito.
+                </>
+              ) : (
+                <>
+                  <span className="text-primary">✨</span>{" "}
+                  <strong className="text-foreground">A consulta grátis da sua conta já foi utilizada.</strong> Cada nova
+                  leitura completa com interpretação por IA usa <strong className="text-foreground">1 crédito</strong>.
+                  Escolha um pacote abaixo quando quiser continuar.
+                </>
+              )}
             </p>
           </div>
 
@@ -552,6 +598,34 @@ const Creditos = () => {
             <DialogDescription>
               Pague com Pix para liberar os créditos automaticamente.
             </DialogDescription>
+            {pixCountdownSec !== null && (
+              <div
+                className={`mt-3 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${
+                  pixCountdownSec === 0
+                    ? "border-amber-500/40 bg-amber-500/10"
+                    : "border-primary/30 bg-primary/5"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Timer
+                    className={`h-4 w-4 shrink-0 ${pixCountdownSec === 0 ? "text-amber-600" : "text-primary"}`}
+                    aria-hidden
+                  />
+                  <span className="text-xs text-muted-foreground font-body leading-snug">
+                    {pixCountdownSec === 0
+                      ? "Prazo de 5 minutos encerrado — se não pagou, feche e gere um novo Pix."
+                      : "Conclua o Pix em até 5 minutos (recomendado pelo app)."}
+                  </span>
+                </div>
+                <span
+                  className={`font-mono text-xl font-semibold tabular-nums shrink-0 ${
+                    pixCountdownSec === 0 ? "text-amber-700" : "text-primary"
+                  }`}
+                >
+                  {formatCountdownMmSs(pixCountdownSec)}
+                </span>
+              </div>
+            )}
           </DialogHeader>
           <div className="max-h-[calc(88vh-88px)] space-y-3 overflow-y-auto px-4 py-4">
             <div className="rounded-md border border-border bg-background/60 p-4">
