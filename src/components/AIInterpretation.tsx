@@ -269,7 +269,7 @@ const AIInterpretation = ({
             }
             className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
           >
-            Entrar ou criar conta
+            Entrar
           </button>
         </div>
       )}
