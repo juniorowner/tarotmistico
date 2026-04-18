@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
-import { markGuestOnceConsumedLocally, requestGuestInterpretationOnce } from "@/lib/guestOnce";
+import {
+  consumePendingGuestQuestion,
+  hasGuestOnceBeenConsumedLocally,
+  markGuestOnceConsumedLocally,
+  requestGuestInterpretationOnce,
+} from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +48,11 @@ const AIInterpretation = ({
   const [question, setQuestion] = useState("");
   const [quotaHint, setQuotaHint] = useState<string | null>(null);
 
+  useEffect(() => {
+    const pq = consumePendingGuestQuestion();
+    if (pq) setQuestion((prev) => (prev.trim() ? prev : pq));
+  }, []);
+
   const handleInterpret = async (opts?: { replaceExisting?: boolean }) => {
     if (authLoading) return;
     if (!user && !guestMode) {
@@ -61,6 +71,13 @@ const AIInterpretation = ({
     if (userQuestionFailsSafetyPolicy(question)) {
       trackEvent("ai_interpretation_blocked_safety");
       toast.error(unsafeUserContentMessage());
+      return;
+    }
+    if (guestMode && hasGuestOnceBeenConsumedLocally()) {
+      trackEvent("guest_interpretation_blocked_already_used");
+      openAuthDialog(
+        "Você já usou a interpretação por IA grátis neste aparelho. Entre ou crie uma conta para novas interpretações com IA — pode continuar sorteando e vendo as cartas acima quantas vezes quiser."
+      );
       return;
     }
     trackEvent("ai_interpretation_requested", {
@@ -88,7 +105,9 @@ const AIInterpretation = ({
         });
         markGuestOnceConsumedLocally();
         onGuestConsumed?.();
-        setQuotaHint("Consulta completa grátis utilizada neste dispositivo. Nas próximas, faça login.");
+        setQuotaHint(
+          "Interpretação IA grátis já utilizada neste aparelho. Pode repetir a tiragem; para nova IA, entre ou cadastre-se."
+        );
       } else {
         const result = await requestAIInterpretation(
           {
@@ -220,11 +239,21 @@ const AIInterpretation = ({
         </p>
       )}
       <p className="text-xs text-center text-muted-foreground font-body mb-4 px-2 leading-relaxed">
-        O baralho tem <strong className="text-foreground">78 cartas</strong> (Arcanos Maiores e Menores).{" "}
-        Sem login, o dispositivo tem <strong className="text-foreground">1 consulta completa grátis com IA</strong>.{" "}
-        Depois disso, é necessário login/cadastro. Logado, cada dia inclui{" "}
-        <strong className="text-foreground">1 consulta grátis com IA</strong>; após o limite diário,{" "}
-        <strong className="text-foreground">1 crédito por consulta</strong>.
+        {guestMode ? (
+          <>
+            Baralho completo com <strong className="text-foreground">78 cartas</strong>. Você pode{" "}
+            <strong className="text-foreground">sortear e ver as cartas quantas vezes quiser</strong> sem login. A{" "}
+            <strong className="text-foreground">interpretação com IA</strong> inclui{" "}
+            <strong className="text-foreground">1 uso grátis por aparelho</strong>; depois, entre ou cadastre-se para
+            novas interpretações com IA.
+          </>
+        ) : (
+          <>
+            O baralho tem <strong className="text-foreground">78 cartas</strong> (Arcanos Maiores e Menores). Cada dia
+            inclui <strong className="text-foreground">1 consulta grátis com IA</strong> após concluir a tiragem; depois
+            do limite, <strong className="text-foreground">1 crédito por consulta</strong>.
+          </>
+        )}
       </p>
 
       {user && consultCommitLoading && (
@@ -234,13 +263,36 @@ const AIInterpretation = ({
         <p className="text-xs text-center text-destructive font-body mb-2 px-2">{consultCommitError}</p>
       )}
 
-      {!interpretation && !isLoading && (
+      {!interpretation && !isLoading && guestMode && hasGuestOnceBeenConsumedLocally() && (
+        <div className="space-y-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-5 text-center">
+          <p className="font-display text-sm text-primary tracking-wide uppercase">Interpretação IA</p>
+          <p className="text-sm text-foreground font-body leading-relaxed">
+            Você já usou a interpretação com IA grátis neste aparelho. Pode continuar explorando as cartas acima à vontade.
+          </p>
+          <p className="text-xs text-muted-foreground font-body">
+            Para uma nova interpretação com IA, entre ou crie uma conta.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              openAuthDialog(
+                "Entre ou cadastre-se para desbloquear novas interpretações com IA. Suas tiragens com cartas continuam disponíveis sem login."
+              )
+            }
+            className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
+          >
+            Entrar ou criar conta
+          </button>
+        </div>
+      )}
+
+      {!interpretation && !isLoading && !(guestMode && hasGuestOnceBeenConsumedLocally()) && (
         <div className="space-y-4">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Faça uma pergunta para a IA (opcional)..."
+            placeholder="Sua pergunta para a IA (opcional)…"
             className="w-full px-4 py-3 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground font-body text-lg focus:outline-none focus:border-primary/60 transition-colors"
           />
           <p className="text-[11px] text-center text-muted-foreground/85 font-body px-1 leading-snug">
@@ -259,7 +311,7 @@ const AIInterpretation = ({
             className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
           >
             <Sparkles className="w-4 h-4" />
-            Interpretar com IA
+            Ver interpretação completa com IA
           </motion.button>
         </div>
       )}

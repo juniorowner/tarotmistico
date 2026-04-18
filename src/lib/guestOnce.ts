@@ -9,6 +9,20 @@ import type { DealtTarotCard } from "@/data/tarotCards";
 
 const GUEST_TOKEN_KEY = "tarot:guest-device-token:v1";
 const GUEST_CONSUMED_KEY = "tarot:guest-once-consumed:v1";
+/** Pergunta vinda do Hero — consumida ao montar a área de IA. */
+export const PENDING_GUEST_QUESTION_KEY = "tarot:pending-question:v1";
+
+/** Lê e apaga a pergunta guardada pelo Hero (sessionStorage). */
+export function consumePendingGuestQuestion(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const v = sessionStorage.getItem(PENDING_GUEST_QUESTION_KEY) ?? "";
+    sessionStorage.removeItem(PENDING_GUEST_QUESTION_KEY);
+    return v.trim();
+  } catch {
+    return "";
+  }
+}
 
 export function hasGuestOnceBeenConsumedLocally(): boolean {
   if (typeof window === "undefined") return false;

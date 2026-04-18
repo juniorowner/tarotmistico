@@ -28,7 +28,6 @@ import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
 import { toast } from "sonner";
-import { hasGuestOnceBeenConsumedLocally, markGuestOnceConsumedLocally } from "@/lib/guestOnce";
 
 function suitLabelPt(suit: NonNullable<DealtTarotCard["suit"]>): string {
   const labels = { cups: "Copas", swords: "Espadas", pentacles: "Ouros", wands: "Paus" } as const;
@@ -86,7 +85,6 @@ const TarotSpread = () => {
   const [consultWelcomeFreeAi, setConsultWelcomeFreeAi] = useState(false);
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
   const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
-  const [guestReadingAlreadyUsed, setGuestReadingAlreadyUsed] = useState(hasGuestOnceBeenConsumedLocally);
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
@@ -99,15 +97,6 @@ const TarotSpread = () => {
   const startReading = useCallback(() => {
     if (!selectedSpread) return;
     if (authLoading) return;
-    if (!user) {
-      if (guestReadingAlreadyUsed) {
-        trackEvent("auth_required_start_reading_after_guest");
-        openAuthDialog(
-          "Sua consulta grátis sem login já foi usada neste dispositivo. Entre ou crie conta para continuar com novas leituras."
-        );
-        return;
-      }
-    }
     if (quotaExhausted) {
       trackEvent("reading_start_blocked_quota");
       toast.error("Sem consultas grátis hoje e sem créditos. Redirecionando para créditos…");
@@ -130,7 +119,7 @@ const TarotSpread = () => {
     setRevealed(new Array(n).fill(false));
     setHasStarted(true);
     setSelectedCard(null);
-  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, guestReadingAlreadyUsed, navigate]);
+  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, navigate]);
 
   useEffect(() => {
     if (!hasStarted || cards.length === 0) return;
@@ -282,12 +271,15 @@ const TarotSpread = () => {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="font-display text-3xl md:text-4xl text-gold-gradient mb-4"
+          className="font-display text-3xl md:text-4xl text-gold-gradient mb-3"
         >
-          Sua Leitura
+          Sua leitura
         </motion.h2>
-        <p className="text-muted-foreground font-body text-lg mb-6 max-w-md mx-auto">
-          Escolha o tipo de leitura, concentre-se em sua pergunta e revele as cartas.
+        <p className="text-muted-foreground font-body text-sm md:text-base mb-2 max-w-lg mx-auto leading-relaxed">
+          <span className="text-foreground/90 font-medium">1.</span> Escolha o tipo de tiragem ·{" "}
+          <span className="text-foreground/90 font-medium">2.</span> Inicie e vire cada carta ·{" "}
+          <span className="text-foreground/90 font-medium">3.</span> Peça a interpretação com IA (sem login: 1 grátis por
+          aparelho)
         </p>
 
         <div className="max-w-2xl mx-auto mb-10 rounded-lg border border-border/60 bg-muted/15 px-4 py-3 text-left">
@@ -319,21 +311,6 @@ const TarotSpread = () => {
                   >
                     {`✦ Iniciar ${selectedSpread.name} ✦`}
                   </motion.button>
-                  {!user && guestReadingAlreadyUsed && (
-                    <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
-                      A consulta gratuita sem login neste dispositivo já foi usada.{" "}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openAuthDialog("Entre ou crie conta para continuar com novas leituras.")
-                        }
-                        className="text-primary underline underline-offset-2"
-                      >
-                        Entrar ou criar conta
-                      </button>
-                      .
-                    </p>
-                  )}
                   {user && quotaExhausted && (
                     <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
                       Sem consultas grátis hoje e sem créditos.{" "}
@@ -443,14 +420,10 @@ const TarotSpread = () => {
                 consultCommitError={consultCommitError}
                 guestMode={!user}
                 onGuestConsumed={() => {
-                  if (!guestReadingAlreadyUsed) {
-                    markGuestOnceConsumedLocally();
-                    setGuestReadingAlreadyUsed(true);
-                    trackEvent("guest_first_reading_completed");
-                    toast.message("Consulta completa grátis concluída.", {
-                      description: "Para novas consultas sem crédito, entre ou crie conta.",
-                    });
-                  }
+                  trackEvent("guest_first_reading_completed");
+                  toast.message("Interpretação IA grátis concluída neste aparelho.", {
+                    description: "Pode continuar a sortear cartas; para nova IA, entre ou crie conta.",
+                  });
                 }}
               />
             )}
