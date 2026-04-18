@@ -5,7 +5,7 @@ import { trackEvent } from "@/lib/analytics";
 import { LogIn, LogOut, Sparkles } from "lucide-react";
 
 export function UserMenu() {
-  const { user, isLoading, credits, aiQuota, openAuthDialog, signOut } = useAuth();
+  const { user, isLoading, credits, openAuthDialog, signOut } = useAuth();
 
   if (isLoading) {
     return (
@@ -32,33 +32,19 @@ export function UserMenu() {
   }
 
   const label = user.email?.split("@")[0] ?? "Conta";
-  const freeLeft = aiQuota?.free_remaining_today;
+  const n = credits ?? 0;
 
   return (
     <div className="flex items-center gap-2 flex-wrap justify-end">
       <Link
         to="/creditos"
-        className="hidden sm:inline-flex items-center gap-1.5 text-xs text-primary font-body hover:underline underline-offset-2"
-        title="Comprar créditos e ver a vaga grátis da conta"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-card/70 px-2.5 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50"
+        title="Ver créditos e comprar mais"
       >
-        Créditos
+        <Sparkles className="h-3.5 w-3.5 shrink-0" />
+        <span>Créditos</span>
+        <span className="tabular-nums font-semibold text-foreground">{n}</span>
       </Link>
-      <span
-        className="hidden md:inline-flex items-center gap-1 text-xs text-muted-foreground font-body"
-        title="Vaga grátis restante na conta (tiragem completa)"
-      >
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
-        <span className="text-primary font-medium">{freeLeft ?? "—"}</span>
-        <span className="text-muted-foreground/80">/1 grátis na conta</span>
-      </span>
-      <span
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground font-body"
-        title="Créditos após usar a vaga grátis da conta"
-      >
-        <Sparkles className="h-3.5 w-3.5 text-primary sm:hidden" />
-        <span className="text-primary font-medium">{credits ?? "—"}</span>
-        <span className="text-muted-foreground/80">créditos</span>
-      </span>
       <span className="max-w-[120px] truncate text-xs text-muted-foreground font-body" title={user.email ?? ""}>
         {label}
       </span>
