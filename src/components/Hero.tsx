@@ -17,7 +17,7 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
   };
 
   return (
-    <section className="relative min-h-[78vh] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[78vh] flex items-center justify-center overflow-hidden pt-[max(5.25rem,calc(env(safe-area-inset-top)+4rem))]">
       <div className="absolute inset-0">
         <img src={heroBg} alt="" className="w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background" />
