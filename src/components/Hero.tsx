@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type HeroProps = {
   onDiscover: (question: string) => void;
@@ -28,8 +29,8 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1 }}
         >
-          <h1 className="font-display text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-gold-gradient mb-4 leading-tight px-1">
-            ELE(A) PENSA EM VOCÊ?
+          <h1 className="mb-4 flex justify-center px-1">
+            <BrandLogo variant="hero" />
           </h1>
           <p className="font-body text-lg md:text-xl text-foreground/85 max-w-xl mx-auto leading-relaxed mb-8">
             Descubra agora com uma leitura de tarot gratuita
