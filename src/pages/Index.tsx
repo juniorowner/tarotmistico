@@ -142,7 +142,7 @@ const Index = () => {
           </div>
         )}
 
-        <footer className="py-5 px-4 text-center border-t border-border/50">
+        <footer className="mt-8 py-5 px-4 text-center border-t border-border/50">
           <p className="font-display text-xs tracking-[0.3em] uppercase text-muted-foreground">
             ✧ Tarot Místico ✧
           </p>
