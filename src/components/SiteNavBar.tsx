@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { BrandLogo } from "@/components/BrandLogo";
 
 type SiteNavBarProps = {
   children: ReactNode;
@@ -30,11 +29,8 @@ export function SiteNavBar({ children, className }: SiteNavBarProps) {
         className
       )}
     >
-      <div className="pointer-events-auto flex w-full max-w-6xl mx-auto items-center justify-between gap-3 flex-wrap px-0 min-h-10">
-        <BrandLogo />
-        <div className="flex items-center justify-end gap-2 flex-wrap flex-1 min-w-0">
-          {children}
-        </div>
+      <div className="pointer-events-auto flex w-full justify-end items-center gap-2 flex-wrap max-w-[min(100%,calc(100vw-2rem))] ml-auto">
+        {children}
       </div>
     </header>
   );
