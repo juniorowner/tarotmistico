@@ -58,7 +58,7 @@ const AIInterpretation = ({
     if (!user && !guestMode) {
       trackEvent("ai_interpretation_auth_required");
       openAuthDialog(
-        "Inicie sessão para ver a interpretação por IA. A consulta grátis diária e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+        "Inicie sessão para ver a interpretação por IA. A vaga grátis da conta e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
       );
       return;
     }
@@ -130,7 +130,7 @@ const AIInterpretation = ({
         if (result.used_credit) {
           setQuotaHint("Esta consulta usou 1 crédito comprado (contabilizado ao concluir a tiragem).");
         } else if (typeof result.free_remaining_today === "number") {
-          setQuotaHint(`Consultas grátis restantes hoje: ${result.free_remaining_today}.`);
+          setQuotaHint(`Vagas grátis restantes na conta: ${result.free_remaining_today}.`);
         }
       }
     } catch (err) {
@@ -168,7 +168,7 @@ const AIInterpretation = ({
       }
       if (e.message === "AUTH_REQUIRED" || e.code === "AUTH_REQUIRED") {
         openAuthDialog(
-          "Inicie sessão para ver a interpretação por IA. A consulta grátis diária e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
+          "Inicie sessão para ver a interpretação por IA. A vaga grátis da conta e os créditos contam ao concluir a tiragem (todas as cartas reveladas)."
         );
         return;
       }
@@ -184,7 +184,7 @@ const AIInterpretation = ({
         trackEvent("ai_interpretation_quota_exceeded");
         setError(
           e.message ||
-            "Limite diário atingido. Compre créditos para continuar hoje ou volte amanhã."
+            "A vaga grátis da conta já foi usada. Compre créditos para novas interpretações com IA."
         );
         setErrorFooter("quota");
         return;
@@ -224,14 +224,15 @@ const AIInterpretation = ({
 
   return (
     <motion.div
+      id="bloco-interpretacao-ia"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto mt-8"
+      className="max-w-2xl mx-auto mt-8 scroll-mt-28"
     >
       {user && (
         <p className="text-xs text-center font-body mb-3 px-2 py-2 rounded-lg bg-primary/10 border border-primary/20 text-foreground/90">
           <Sparkles className="inline w-3.5 h-3.5 text-primary mr-1 align-text-bottom" />
-          <strong>{aiQuota?.free_remaining_today ?? 0}</strong> de 1 consulta grátis restante hoje ·{" "}
+          <strong>{aiQuota?.free_remaining_today ?? 0}</strong> de 1 vaga grátis restante na conta ·{" "}
           <strong>{aiQuota?.credits_balance ?? 0}</strong> créditos comprados ·{" "}
           <Link to="/creditos" className="text-primary underline underline-offset-2 hover:text-primary/80">
             COMPRAR CRÉDITOS
@@ -249,9 +250,9 @@ const AIInterpretation = ({
           </>
         ) : (
           <>
-            O baralho tem <strong className="text-foreground">78 cartas</strong> (Arcanos Maiores e Menores). Cada dia
-            inclui <strong className="text-foreground">1 consulta grátis com IA</strong> após concluir a tiragem; depois
-            do limite, <strong className="text-foreground">1 crédito por consulta</strong>.
+            O baralho tem <strong className="text-foreground">78 cartas</strong> (Arcanos Maiores e Menores). A conta
+            inclui <strong className="text-foreground">1 consulta grátis com IA no total</strong> após concluir a tiragem;
+            depois disso, <strong className="text-foreground">1 crédito por consulta</strong>.
           </>
         )}
       </p>
@@ -356,8 +357,7 @@ const AIInterpretation = ({
             {errorFooter === "quota" && (
               <div className="pl-7 space-y-2">
                 <p className="text-xs text-muted-foreground font-body">
-                  Compre com Mercado Pago (cartão, Pix, etc.) ou volte amanhã para usar a consulta
-                  grátis outra vez.
+                  Compre com Mercado Pago (cartão, Pix, etc.) para desbloquear novas interpretações com IA.
                 </p>
                 <Link
                   to="/creditos"
@@ -370,8 +370,8 @@ const AIInterpretation = ({
             {errorFooter === "included" && (
               <p className="text-xs text-muted-foreground pl-7 font-body">
                 Lembrete: a sua conta inclui{" "}
-                <strong className="text-foreground/90">1 consulta por dia</strong> sem usar créditos (ao concluir a
-                tiragem). Depois desse limite, são necessários créditos ou pode esperar até o dia seguinte.
+                <strong className="text-foreground/90">1 consulta grátis no total</strong> (ao concluir a tiragem). Depois
+                disso, são necessários créditos para novas consultas com IA.
               </p>
             )}
           </motion.div>

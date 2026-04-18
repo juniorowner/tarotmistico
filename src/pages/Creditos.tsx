@@ -18,8 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SEO from "@/components/SEO";
 
-const FREE_PER_DAY = 1;
-
 function translatePaymentStatus(statusRaw: string): string {
   const status = String(statusRaw || "").toLowerCase();
   const labels: Record<string, string> = {
@@ -225,7 +223,7 @@ const Creditos = () => {
   };
 
   const freeRem = aiQuota?.free_remaining_today ?? null;
-  const used = aiQuota?.used_today ?? null;
+  const completed = aiQuota?.consults_completed ?? null;
 
   const handleEnablePush = async () => {
     if (!user) {
@@ -308,7 +306,7 @@ const Creditos = () => {
     <>
       <SEO
         title="Créditos IA | Tarot Místico"
-        description="Compre créditos para continuar as interpretações por IA após o limite grátis diário."
+        description="Compre créditos para novas interpretações por IA após a consulta grátis da sua conta."
         path="/creditos"
       />
       <div className="min-h-screen bg-background text-foreground">
@@ -327,11 +325,10 @@ const Creditos = () => {
               Créditos IA
             </h1>
             <p className="text-muted-foreground font-body max-w-xl mx-auto text-sm leading-relaxed">
-              Na primeira vez, a conta ganha <strong className="text-foreground">1 consulta completa grátis</strong>{" "}
-              (inclui interpretação por IA). Depois disso, você tem{" "}
-              <strong className="text-foreground">{FREE_PER_DAY} consultas grátis por dia</strong>{" "}
-              (tiragem completa, todas as cartas reveladas). Depois, cada consulta usa{" "}
-              <strong className="text-foreground">1 crédito</strong> (ou pode esperar até o dia seguinte).
+              A conta tem <strong className="text-foreground">1 consulta completa grátis no total</strong> (tiragem
+              completa com interpretação por IA). Depois disso,{" "}
+              <strong className="text-foreground">cada nova consulta usa 1 crédito</strong> — não há nova vaga grátis
+              por dia.
             </p>
           </div>
 
@@ -343,9 +340,13 @@ const Creditos = () => {
                   <strong className="text-foreground">{freeRem ?? "—"}</strong>
                   <span className="text-muted-foreground">
                     {" "}
-                    grátis restantes hoje
-                    {used != null && (
-                      <span className="text-muted-foreground/80"> — {used}/{FREE_PER_DAY} usadas</span>
+                    vaga(s) grátis restante(s) na conta
+                    {completed != null && (
+                      <span className="text-muted-foreground/80">
+                        {" "}
+                        — {completed}{" "}
+                        {completed === 1 ? "consulta concluída" : "consultas concluídas"}
+                      </span>
                     )}
                   </span>
                 </span>

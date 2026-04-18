@@ -11,11 +11,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsNarrowViewport } from "@/hooks/use-mobile";
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -70,16 +72,34 @@ function CardDetailBody({ card }: { card: DealtTarotCard }) {
 
 const dealSpread = (count: number): DealtTarotCard[] => drawReadingCards(allCards, count);
 
-const TarotSpread = () => {
+/** Sessão já sorteada (ex.: funil de conversão). */
+export interface TarotInitialReading {
+  spread: SpreadType;
+  cards: DealtTarotCard[];
+  revealed: boolean[];
+}
+
+interface TarotSpreadProps {
+  /** Quando definido na montagem, inicia a tiragem com cartas já sorteadas (ex.: após pré-visualização). */
+  initialReading?: TarotInitialReading | null;
+}
+
+const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   const navigate = useNavigate();
   const { user, openAuthDialog, refreshAiQuota, isLoading: authLoading, aiQuota } = useAuth();
   const isNarrow = useIsNarrowViewport();
-  const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(null);
-  const [cards, setCards] = useState<DealtTarotCard[]>([]);
-  const [revealed, setRevealed] = useState<boolean[]>([]);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [selectedCard, setSelectedCard] = useState<DealtTarotCard | null>(null);
-  const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(null);
+  const [fromConversionFunnel, setFromConversionFunnel] = useState(() => !!initialReading);
+  const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(() => initialReading?.spread ?? null);
+  const [cards, setCards] = useState<DealtTarotCard[]>(() => initialReading?.cards ?? []);
+  const [revealed, setRevealed] = useState<boolean[]>(() => initialReading?.revealed ?? []);
+  const [hasStarted, setHasStarted] = useState(() => !!initialReading);
+  const [selectedCard, setSelectedCard] = useState<DealtTarotCard | null>(() => {
+    if (!initialReading?.revealed.length) return null;
+    return initialReading.revealed[0] ? initialReading.cards[0] ?? null : null;
+  });
+  const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(() =>
+    initialReading ? crypto.randomUUID() : null
+  );
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const [consultUsedCredit, setConsultUsedCredit] = useState<boolean | null>(null);
   const [consultWelcomeFreeAi, setConsultWelcomeFreeAi] = useState(false);
@@ -99,10 +119,11 @@ const TarotSpread = () => {
     if (authLoading) return;
     if (quotaExhausted) {
       trackEvent("reading_start_blocked_quota");
-      toast.error("Sem consultas grátis hoje e sem créditos. Redirecionando para créditos…");
+      toast.error("Sem vaga grátis na conta e sem créditos. A abrir créditos…");
       void navigate("/creditos");
       return;
     }
+    setFromConversionFunnel(false);
     const selected = dealSpread(selectedSpread.cardCount);
     trackEvent("reading_started", {
       spread_id: selectedSpread.id,
@@ -148,6 +169,7 @@ const TarotSpread = () => {
   };
 
   const resetAll = () => {
+    setFromConversionFunnel(false);
     setSelectedSpread(null);
     setCards([]);
     setRevealed([]);
@@ -206,7 +228,7 @@ const TarotSpread = () => {
           trackEvent("consultation_commit_quota_exceeded");
           setConsultCommitError(
             e.message ||
-              "Limite de consultas grátis hoje atingido. Compre créditos ou volte amanhã."
+              "A consulta gratuita da conta já foi utilizada. Compre créditos para novas leituras com IA."
           );
         } else {
           trackEvent("consultation_commit_failed");
@@ -228,7 +250,7 @@ const TarotSpread = () => {
     if (!selectedSpread) return;
     if (!user) {
       openAuthDialog(
-        "Para guardar no diário, inicie sessão. As leituras ficam na sua conta. Você tem 1 interpretação por IA grátis por dia; depois pode usar créditos."
+        "Para guardar no diário, inicie sessão. As leituras ficam na sua conta. Você tem 1 interpretação por IA grátis no total; depois pode usar créditos."
       );
       return;
     }
@@ -265,7 +287,7 @@ const TarotSpread = () => {
   };
 
   return (
-    <section className="py-16 px-4">
+    <section className={cn("py-16 px-4", isNarrow && hasStarted && "pb-28")}>
       <div className="max-w-6xl mx-auto text-center">
         <motion.h2
           initial={{ opacity: 0 }}
@@ -276,10 +298,29 @@ const TarotSpread = () => {
           Sua leitura
         </motion.h2>
         <p className="text-muted-foreground font-body text-sm md:text-base mb-2 max-w-lg mx-auto leading-relaxed">
-          <span className="text-foreground/90 font-medium">1.</span> Escolha o tipo de tiragem ·{" "}
-          <span className="text-foreground/90 font-medium">2.</span> Inicie e vire cada carta ·{" "}
-          <span className="text-foreground/90 font-medium">3.</span> Peça a interpretação com IA (sem login: 1 grátis por
-          aparelho)
+          {fromConversionFunnel ? (
+            selectedSpread && selectedSpread.cardCount === 1 ? (
+              <>
+                Sua carta está na mesa — avance para a{" "}
+                <span className="text-foreground/90 font-medium">interpretação com IA</span> quando quiser (sem login: 1
+                grátis por aparelho; com conta: 1 grátis no total)
+              </>
+            ) : (
+              <>
+                A primeira carta já foi revelada no funil —{" "}
+                <span className="text-foreground/90 font-medium">toque nas outras</span> para seguir a tiragem · depois,{" "}
+                <span className="text-foreground/90 font-medium">interpretação com IA</span> (sem login: 1 grátis por
+                aparelho; com conta: 1 grátis no total)
+              </>
+            )
+          ) : (
+            <>
+              <span className="text-foreground/90 font-medium">1.</span> Escolha o tipo de tiragem ·{" "}
+              <span className="text-foreground/90 font-medium">2.</span> Inicie e vire cada carta ·{" "}
+              <span className="text-foreground/90 font-medium">3.</span> Peça a interpretação com IA (sem login: 1 grátis
+              por aparelho; com conta: 1 grátis no total)
+            </>
+          )}
         </p>
 
         <div className="max-w-2xl mx-auto mb-10 rounded-lg border border-border/60 bg-muted/15 px-4 py-3 text-left">
@@ -313,11 +354,11 @@ const TarotSpread = () => {
                   </motion.button>
                   {user && quotaExhausted && (
                     <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
-                      Sem consultas grátis hoje e sem créditos.{" "}
+                      Sem vaga grátis na conta e sem créditos.{" "}
                       <Link to="/creditos" className="text-primary underline underline-offset-2">
                         Comprar créditos
                       </Link>{" "}
-                      ou volte amanhã (limite diário em UTC).
+                      para novas leituras com IA.
                     </p>
                   )}
                 </div>
@@ -365,8 +406,16 @@ const TarotSpread = () => {
               <DrawerContent className="max-h-[85vh] flex flex-col">
                 {selectedCard && (
                   <>
-                    <DrawerHeader className="text-left pb-2">
-                      <DrawerTitle className="font-display text-lg text-primary">
+                    <DrawerHeader className="relative text-left pb-2 pr-14">
+                      <DrawerClose asChild>
+                        <button
+                          type="button"
+                          className="absolute right-2 top-2 rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+                        >
+                          Fechar
+                        </button>
+                      </DrawerClose>
+                      <DrawerTitle className="font-display text-lg text-primary pr-2">
                         {selectedCard.name}
                         {selectedCard.isReversed ? " · invertida" : ""}
                       </DrawerTitle>
@@ -467,6 +516,30 @@ const TarotSpread = () => {
           </>
         )}
       </div>
+
+      {isNarrow && hasStarted && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
+          <div className="pointer-events-auto mx-auto max-w-lg">
+            {!allRevealed ? (
+              <p className="text-center text-xs text-muted-foreground font-body">
+                Toque em cada carta para revelar
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("bloco-interpretacao-ia")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
+              >
+                Ver interpretação com IA
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

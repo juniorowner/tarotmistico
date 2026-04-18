@@ -1,21 +1,14 @@
-// Limite diário de consultas (tiragens completas) + saldo de créditos
+// Quota de consulta grátis por conta (vitalícia) + saldo de créditos
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const FREE_AI_PER_DAY = 1;
+const FREE_CONSULTS_PER_ACCOUNT = 1;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-function startOfUtcDayIso(): string {
-  const d = new Date();
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
-  ).toISOString();
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -54,19 +47,18 @@ serve(async (req) => {
       });
     }
 
-    const dayStart = startOfUtcDayIso();
-    const { count: usedToday, error: countErr } = await admin
+    const { count: consultsLifetime, error: countErr } = await admin
       .from("reading_consults")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", dayStart);
+      .is("revoked_at", null);
 
     if (countErr) {
       console.error("ai-quota count reading_consults:", countErr);
     }
 
-    const n = usedToday ?? 0;
-    const freeRemaining = Math.max(0, FREE_AI_PER_DAY - n);
+    const n = consultsLifetime ?? 0;
+    const freeRemaining = Math.max(0, FREE_CONSULTS_PER_ACCOUNT - n);
 
     const { data: profile } = await admin
       .from("profiles")
@@ -76,8 +68,8 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        free_per_day: FREE_AI_PER_DAY,
-        used_today: n,
+        free_per_account: FREE_CONSULTS_PER_ACCOUNT,
+        consults_completed: n,
         free_remaining_today: freeRemaining,
         credits_balance: profile?.credits ?? 0,
       }),

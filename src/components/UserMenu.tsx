@@ -39,21 +39,21 @@ export function UserMenu() {
       <Link
         to="/creditos"
         className="hidden sm:inline-flex items-center gap-1.5 text-xs text-primary font-body hover:underline underline-offset-2"
-        title="Comprar créditos e ver consultas grátis do dia"
+        title="Comprar créditos e ver a vaga grátis da conta"
       >
         Créditos
       </Link>
       <span
         className="hidden md:inline-flex items-center gap-1 text-xs text-muted-foreground font-body"
-        title="Consultas grátis restantes hoje (tiragem completa)"
+        title="Vaga grátis restante na conta (tiragem completa)"
       >
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span className="text-primary font-medium">{freeLeft ?? "—"}</span>
-        <span className="text-muted-foreground/80">/1 grátis hoje</span>
+        <span className="text-muted-foreground/80">/1 grátis na conta</span>
       </span>
       <span
         className="inline-flex items-center gap-1 text-xs text-muted-foreground font-body"
-        title="Créditos após a consulta grátis do dia"
+        title="Créditos após usar a vaga grátis da conta"
       >
         <Sparkles className="h-3.5 w-3.5 text-primary sm:hidden" />
         <span className="text-primary font-medium">{credits ?? "—"}</span>

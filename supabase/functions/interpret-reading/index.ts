@@ -4,7 +4,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "./safetyContent.ts";
 
-const FREE_AI_PER_DAY = 1;
+/** Alinhado a commit-reading-consult: 1 consulta grátis por conta (vitalícia). */
+const FREE_CONSULTS_PER_ACCOUNT = 1;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,13 +31,6 @@ interface ReadingRequest {
   consultationId: string;
   /** Apaga interpretação guardada e gera outra na mesma consulta (sem novo débito de crédito/quota). */
   replaceExisting?: boolean;
-}
-
-function startOfUtcDayIso(): string {
-  const d = new Date();
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
-  ).toISOString();
 }
 
 /**
@@ -140,7 +134,7 @@ async function revokeConsultAfterAiFailure(
         balance_after: prof?.credits ?? 0,
         event_type: "refund_free_consult",
         summary:
-          "Consulta gratuita anulada (falha da interpretação por IA) — o slot voltou a contar no limite diário.",
+          "Consulta gratuita anulada (falha da interpretação por IA) — a vaga grátis da conta voltou a estar disponível.",
         ref_table: "reading_consults",
         ref_id: consultId,
       });
@@ -270,14 +264,13 @@ serve(async (req) => {
       priorAi = null;
     }
 
-    const dayStart = startOfUtcDayIso();
-    const { count: consultToday } = await admin
+    const { count: consultLifetime } = await admin
       .from("reading_consults")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", dayStart);
-    const consultCount = consultToday ?? 0;
-    const freeRemainingAfter = Math.max(0, FREE_AI_PER_DAY - consultCount);
+      .is("revoked_at", null);
+    const consultCount = consultLifetime ?? 0;
+    const freeRemainingAfter = Math.max(0, FREE_CONSULTS_PER_ACCOUNT - consultCount);
 
     if (priorAi?.ai_interpretation) {
       const { data: profAfter } = await admin
@@ -509,12 +502,12 @@ ${cardsDescription}
     }
     savedReading = row;
 
-    const { count: consultTodayAfter } = await admin
+    const { count: consultAfter } = await admin
       .from("reading_consults")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", dayStart);
-    const freeRemaining = Math.max(0, FREE_AI_PER_DAY - (consultTodayAfter ?? 0));
+      .is("revoked_at", null);
+    const freeRemaining = Math.max(0, FREE_CONSULTS_PER_ACCOUNT - (consultAfter ?? 0));
     const { data: profAfter } = await admin
       .from("profiles")
       .select("credits")

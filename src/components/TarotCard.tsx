@@ -27,7 +27,9 @@ const TarotCardComponent = ({
       transition={{ delay, duration: 0.6 }}
       className="flex flex-col items-center gap-3"
     >
-      <span className="text-sm font-display tracking-[0.2em] uppercase text-muted-foreground">{label}</span>
+      {label.trim().length > 0 && (
+        <span className="text-sm font-display tracking-[0.2em] uppercase text-muted-foreground">{label}</span>
+      )}
       <div
         className="relative w-44 h-72 md:w-52 md:h-80 cursor-pointer perspective-1000"
         onClick={onReveal}

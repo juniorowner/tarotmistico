@@ -20,7 +20,7 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
   credits: number | null;
-  /** Leituras grátis restantes hoje + créditos — atualizado com refreshAiQuota */
+  /** Vaga(s) grátis restantes na conta + créditos — atualizado com refreshAiQuota */
   aiQuota: AiQuotaResponse | null;
   refreshCredits: () => Promise<void>;
   refreshAiQuota: () => Promise<void>;

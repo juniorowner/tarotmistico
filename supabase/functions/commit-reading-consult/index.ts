@@ -2,20 +2,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const FREE_CONSULTS_PER_DAY = 1;
+/** Uma consulta com tiragem completa grátis por conta (vitalícia); depois só com crédito. */
+const FREE_CONSULTS_PER_ACCOUNT_LIFETIME = 1;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-function startOfUtcDayIso(): string {
-  const d = new Date();
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
-  ).toISOString();
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -90,15 +84,13 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existing) {
-      const dayStart = startOfUtcDayIso();
-      // Inclui revogadas: senão cada falha da IA “devolvia” uma vaga e dava consultas grátis ilimitadas no mesmo dia.
-      const { count: usedToday } = await admin
+      const { count: lifetimeUsed } = await admin
         .from("reading_consults")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .gte("created_at", dayStart);
-      const n = usedToday ?? 0;
-      const freeRemaining = Math.max(0, FREE_CONSULTS_PER_DAY - n);
+        .is("revoked_at", null);
+      const n = lifetimeUsed ?? 0;
+      const freeRemaining = Math.max(0, FREE_CONSULTS_PER_ACCOUNT_LIFETIME - n);
       const { data: prof } = await admin
         .from("profiles")
         .select("credits")
@@ -117,12 +109,11 @@ serve(async (req) => {
       );
     }
 
-    const dayStart = startOfUtcDayIso();
     const { count: usedBefore, error: countErr } = await admin
       .from("reading_consults")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", dayStart);
+      .is("revoked_at", null);
 
     if (countErr) {
       console.error("count reading_consults:", countErr);
@@ -148,15 +139,15 @@ serve(async (req) => {
       );
     }
 
-    if (n >= FREE_CONSULTS_PER_DAY) {
+    if (n >= FREE_CONSULTS_PER_ACCOUNT_LIFETIME) {
       if (profileBefore.credits < 1) {
         return new Response(
           JSON.stringify({
             error:
-              "Atingiu o limite de consultas gratuitas hoje. Compre créditos para continuar ou volte amanhã.",
+              "A consulta gratuita da sua conta já foi utilizada. Compre créditos para novas leituras completas com interpretação por IA.",
             code: "QUOTA_EXCEEDED",
-            free_per_day: FREE_CONSULTS_PER_DAY,
-            used_today: n,
+            free_per_account: FREE_CONSULTS_PER_ACCOUNT_LIFETIME,
+            consults_completed: n,
             credits: profileBefore.credits ?? 0,
           }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -209,13 +200,13 @@ serve(async (req) => {
         .eq("dedupe_key", dedupeKey)
         .maybeSingle();
       if (raced) {
-        const { count: usedTodayRace } = await admin
+        const { count: usedRace } = await admin
           .from("reading_consults")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id)
-          .gte("created_at", dayStart);
-        const nRace = usedTodayRace ?? 0;
-        const freeRemRace = Math.max(0, FREE_CONSULTS_PER_DAY - nRace);
+          .is("revoked_at", null);
+        const nRace = usedRace ?? 0;
+        const freeRemRace = Math.max(0, FREE_CONSULTS_PER_ACCOUNT_LIFETIME - nRace);
         const { data: profRace } = await admin
           .from("profiles")
           .select("credits")
@@ -260,10 +251,10 @@ serve(async (req) => {
       .from("reading_consults")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .gte("created_at", dayStart);
+      .is("revoked_at", null);
 
     const nAfter = usedAfter ?? 0;
-    const freeRemaining = Math.max(0, FREE_CONSULTS_PER_DAY - nAfter);
+    const freeRemaining = Math.max(0, FREE_CONSULTS_PER_ACCOUNT_LIFETIME - nAfter);
     const { data: profAfter } = await admin
       .from("profiles")
       .select("credits")
@@ -272,7 +263,7 @@ serve(async (req) => {
 
     const summary = usedCredit
       ? "1 crédito usado ao concluir a tiragem (consulta paga)."
-      : `Consulta gratuita ao concluir a tiragem (${Math.min(nAfter, FREE_CONSULTS_PER_DAY)}/${FREE_CONSULTS_PER_DAY} no limite diário).`;
+      : "Consulta gratuita ao concluir a tiragem (1ª consulta da conta).";
     try {
       await admin.from("credit_ledger").insert({
         user_id: user.id,
