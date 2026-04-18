@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AiQuotaResponse } from "@/lib/aiQuota";
 import { fetchAiQuota } from "@/lib/aiQuota";
 import { trackEvent } from "@/lib/analytics";
+import { friendlyNameFromUser, readDisplayNameFromUser } from "@/lib/userDisplay";
 
 const POST_LOGIN_REDIRECT_FLAG = "tarot:post-login-redirected:v1";
 
@@ -22,8 +23,13 @@ type AuthContextValue = {
   credits: number | null;
   /** Vaga(s) grátis restantes na conta + créditos — atualizado com refreshAiQuota */
   aiQuota: AiQuotaResponse | null;
+  /** Nome opcional (metadata); null se só existir e-mail. */
+  displayName: string | null;
+  /** Nome ou parte do e-mail — para cumprimentos. */
+  friendlyName: string;
   refreshCredits: () => Promise<void>;
   refreshAiQuota: () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<{ error?: string }>;
   authDialogOpen: boolean;
   authDialogMessage: string | undefined;
   openAuthDialog: (message?: string) => void;
@@ -65,6 +71,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const q = await fetchAiQuota();
     setAiQuota(q);
     if (q) setCredits(q.credits_balance);
+  }, []);
+
+  const displayName = useMemo(
+    () => readDisplayNameFromUser(session?.user ?? null),
+    [session?.user]
+  );
+
+  const friendlyName = useMemo(
+    () => (session?.user ? friendlyNameFromUser(session.user) : ""),
+    [session?.user]
+  );
+
+  const updateDisplayName = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        display_name: trimmed.length > 0 ? trimmed : "",
+      },
+    });
+    if (error) return { error: error.message };
+    const {
+      data: { session: next },
+    } = await supabase.auth.getSession();
+    setSession(next);
+    trackEvent("profile_display_name_updated", { has_name: trimmed.length > 0 });
+    return {};
   }, []);
 
   useEffect(() => {
@@ -139,8 +171,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       credits,
       aiQuota,
+      displayName,
+      friendlyName,
       refreshCredits,
       refreshAiQuota,
+      updateDisplayName,
       authDialogOpen,
       authDialogMessage,
       openAuthDialog,
@@ -152,8 +187,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       credits,
       aiQuota,
+      displayName,
+      friendlyName,
       refreshCredits,
       refreshAiQuota,
+      updateDisplayName,
       authDialogOpen,
       authDialogMessage,
       openAuthDialog,

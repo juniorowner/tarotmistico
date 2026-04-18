@@ -15,7 +15,7 @@ import { SiteNavBar } from "@/components/SiteNavBar";
 import SEO from "@/components/SEO";
 
 const Diary = () => {
-  const { user, isLoading: authLoading, openAuthDialog } = useAuth();
+  const { user, isLoading: authLoading, openAuthDialog, friendlyName } = useAuth();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -136,7 +136,7 @@ const Diary = () => {
               Diário de Leituras
             </h1>
             <p className="text-muted-foreground font-body text-sm mt-1">
-              Suas leituras guardadas na conta {user.email}
+              Olá, {friendlyName} — leituras na conta <span className="text-foreground/80">{user.email}</span>
             </p>
           </div>
         </div>

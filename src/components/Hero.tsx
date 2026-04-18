@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
 import { BrandLogo } from "@/components/BrandLogo";
+import { useAuth } from "@/contexts/AuthContext";
 
 type HeroProps = {
   onDiscover: (question: string) => void;
@@ -11,6 +12,7 @@ type HeroProps = {
 
 const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
   const [question, setQuestion] = useState("");
+  const { user, friendlyName } = useAuth();
 
   const submit = () => {
     onDiscover(question.trim());
@@ -32,6 +34,11 @@ const Hero = ({ onDiscover, onOpenFullCatalog }: HeroProps) => {
           <h1 className="mb-4 flex justify-center px-1">
             <BrandLogo variant="hero" />
           </h1>
+          {user && friendlyName ? (
+            <p className="font-body text-sm md:text-base text-primary/90 max-w-xl mx-auto leading-relaxed mb-2">
+              Olá, {friendlyName}
+            </p>
+          ) : null}
           <p className="font-body text-lg md:text-xl text-foreground/85 max-w-xl mx-auto leading-relaxed mb-8">
             Descubra agora com uma leitura de tarot gratuita
           </p>
