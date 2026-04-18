@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 import Hero from "@/components/Hero";
@@ -16,10 +16,13 @@ import { drawReadingCards } from "@/lib/shuffleDeck";
 import { allCards } from "@/data/tarotCards";
 import { PENDING_GUEST_QUESTION_KEY } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ConversionPhase = "hero" | "choose" | "loading" | "preview" | "reading";
 
 const Index = () => {
+  const { user, isLoading: authLoading } = useAuth();
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
   const [phase, setPhase] = useState<ConversionPhase>("hero");
   const [question, setQuestion] = useState("");
   const [pendingDeal, setPendingDeal] = useState<{
@@ -28,6 +31,28 @@ const Index = () => {
   } | null>(null);
   const [spreadSession, setSpreadSession] = useState<TarotInitialReading | null>(null);
   const [readingKey, setReadingKey] = useState(0);
+
+  /** Ao sair da conta, volta ao início da home (funil + tiragem limpos). */
+  useEffect(() => {
+    if (authLoading) return;
+    const uid = user?.id ?? null;
+    const prev = prevUserIdRef.current;
+    if (prev !== undefined && prev !== null && uid === null) {
+      setPhase("hero");
+      setQuestion("");
+      setPendingDeal(null);
+      setSpreadSession(null);
+      setReadingKey((k) => k + 1);
+      try {
+        sessionStorage.removeItem(PENDING_GUEST_QUESTION_KEY);
+      } catch {
+        /* ignore */
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      trackEvent("home_reset_after_sign_out");
+    }
+    prevUserIdRef.current = uid;
+  }, [user, authLoading]);
 
   const jsonLd = {
     "@context": "https://schema.org",
