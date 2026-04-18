@@ -1,12 +1,11 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Sparkles } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import Hero from "@/components/Hero";
 import TarotSpread, { type TarotInitialReading } from "@/components/TarotSpread";
 import { UserMenu } from "@/components/UserMenu";
 import { SiteNavBar } from "@/components/SiteNavBar";
 import SEO from "@/components/SEO";
-import { useAuth } from "@/contexts/AuthContext";
 import { ConversionChooseSpread } from "@/components/conversion/ConversionChooseSpread";
 import { ConversionLoading } from "@/components/conversion/ConversionLoading";
 import { ConversionCardPreview } from "@/components/conversion/ConversionCardPreview";
@@ -21,7 +20,6 @@ import { trackEvent } from "@/lib/analytics";
 type ConversionPhase = "hero" | "choose" | "loading" | "preview" | "reading";
 
 const Index = () => {
-  const { user, isLoading } = useAuth();
   const [phase, setPhase] = useState<ConversionPhase>("hero");
   const [question, setQuestion] = useState("");
   const [pendingDeal, setPendingDeal] = useState<{
@@ -120,15 +118,6 @@ const Index = () => {
             <BookOpen className="w-4 h-4" />
             Diário
           </Link>
-          {!isLoading && user && (
-            <Link
-              to="/creditos"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 backdrop-blur border border-border hover:border-primary/40 text-primary transition-all font-display text-xs tracking-wider uppercase"
-            >
-              <Sparkles className="w-4 h-4" />
-              Créditos
-            </Link>
-          )}
           <UserMenu />
         </SiteNavBar>
 
