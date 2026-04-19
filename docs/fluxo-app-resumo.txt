@@ -1,0 +1,110 @@
+FLUXO DO APP — RESUMO ATUAL (para passar ao ChatGPT)
+Atualizado: 2026-04-19
+Projeto: soul-guide-readings
+
+================================================================================
+1) REGRA DE OURO (PRODUTO / CONVERSÃO)
+================================================================================
+- Nunca bloquear antes da curiosidade: o usuário sempre pode escolher tiragem e revelar cartas.
+- Cobrar / pedir login / paywall no pico: quando pede interpretação completa com IA (ou registo da consulta no backend).
+- A leitura em andamento pertence ao usuário: não “sumir” progresso por refresh, login ou voltar à página — salvo quando ele escolhe substituir.
+
+================================================================================
+2) FLUXO GERAL (SEMPRE O MESMO ARCO EMOCIONAL)
+================================================================================
+1. Escolhe a tiragem
+2. Inicia a leitura (sorteia cartas)
+3. Revela carta a carta (sempre permitido)
+4. Curiosidade no máximo
+5. Clica na interpretação com IA
+6. Aí sim:
+   - Se guest e ainda tem a 1ª grátis no dispositivo → interpretação guest
+   - Se logado → regista consulta (commit) e depois interpretação
+   - Se sem saldo / precisa login → bloqueio aparece EM CIMA da leitura já feita, sem zerar cartas
+
+================================================================================
+3) UTILIZADOR DESLOGADO (GUEST)
+================================================================================
+3.1 Primeira interpretação IA guest (1x por dispositivo)
+- Edge Function: guest-interpret-once (com retry em falha de rede transitória).
+- Após sucesso:
+  - Marca localmente que consumiu a guest no aparelho.
+  - Copy emocional pós-leitura (não “frio”):
+    - “Sua leitura revelou algo importante...”
+    - “Mas há mais detalhes que podem mudar completamente essa resposta.”
+  - CTA forte: “CONTINUAR MINHA LEITURA” → abre login.
+
+3.2 Guest já usou a grátis no dispositivo
+- Não destrói a mesa: cartas e ritual continuam.
+- Nova interpretação IA completa em guest: bloqueada → convite para entrar/criar conta.
+
+3.3 Cartas “ilimitadas”, IA guest 1x
+- O usuário pode continuar explorando tiragens/revelações; o limite duro é interpretação IA guest repetida sem conta.
+
+================================================================================
+4) UTILIZADOR LOGADO
+================================================================================
+4.1 Antes de iniciar tiragem
+- Pode haver aviso de UI se não há grátis nem créditos (quota “esgotada” no sentido de IA paga).
+- IMPORTANTE: isso NÃO bloqueia mais o botão de iniciar tiragem nem impede revelar cartas.
+
+4.2 Após revelar todas as cartas (utilizador logado)
+- Chama commit-reading-consult (com retry em falha de rede transitória).
+- Obtém consultation_id, used_credit, welcome_free_ai, saldos atualizados.
+- Se quota excedida no commit: mensagem no bloco de IA / consulta — sem apagar cartas.
+
+4.3 Interpretação IA (logado)
+- Edge Function: interpret-reading (com retry em falha de rede transitória).
+- Token: getUser/getSession/refreshSession para JWT válido; em 401 tenta refresh e repete.
+- Na mesma tiragem: “Gerar novamente” com replaceExisting=true (sem novo débito).
+- Nova tiragem = nova consulta = pode consumir outra unidade (grátis da conta se houver, senão crédito).
+
+================================================================================
+5) PERSISTÊNCIA — “DE ONDE PAROU” (sessionStorage)
+================================================================================
+Chave: tarot:reading-progress:v1
+
+O que é guardado enquanto a leitura está em andamento:
+- spreadId + cartas sorteadas + array de reveladas
+- readingDedupeKey
+- consultationId (quando já existir)
+- flags/erros de commit relevantes para UI
+- pergunta digitada no bloco de IA
+
+Comportamento:
+- Refresh da página / voltar ao mesmo separador / fluxo de login: restaura a mesma leitura.
+- Não substitui “sozinho” sem ação clara do usuário.
+
+================================================================================
+6) NOVA TIRAGEM vs TROCAR TIRAGEM (CLAREZA PARA O USUÁRIO)
+================================================================================
+6.1 Iniciar nova leitura (botão “continuar leitura” / fluxo equivalente)
+- Substitui a leitura anterior de propósito.
+- Mostra toast: “Você começou uma nova leitura. A anterior foi substituída.”
+
+6.2 Trocar tiragem com leitura em andamento (não concluída)
+- Link “Trocar tiragem (reinicia esta leitura)” visível enquanto ainda não revelou todas as cartas.
+- Pede confirmação antes de perder progresso.
+- Se confirmar: reset + mesmo toast de substituição.
+
+6.3 Uma leitura ativa por vez
+- Sempre vale a última tiragem iniciada; não mistura duas leituras no storage.
+
+================================================================================
+7) MONETIZAÇÃO (RESUMO)
+================================================================================
+- 1 interpretação guest por dispositivo (funil).
+- 1 interpretação completa grátis por conta (conforme backend/quota).
+- Créditos pagos (Mercado Pago) para novas interpretações completas.
+- Paywall/login aparecem no momento da interpretação / consulta — não no início ritual.
+
+================================================================================
+8) RESILIÊNCIA DE REDE (EDGE FUNCTIONS)
+================================================================================
+Wrapper invokeEdgeFunction: até 3 tentativas com backoff só em FunctionsFetchError.
+Aplicado em fluxos críticos (interpretação, commit, guest, pagamentos, ingest analytics).
+
+================================================================================
+9) FRASE-CHAVE PARA ORIENTAR COPY / PRODUTO
+================================================================================
+“Nunca interrompa a história no meio. Cobre depois do envolvimento.”

@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { allCards, type DealtTarotCard } from "@/data/tarotCards";
 import { drawReadingCards } from "@/lib/shuffleDeck";
-import { SpreadType } from "@/data/spreadTypes";
+import { spreadTypes, SpreadType } from "@/data/spreadTypes";
 import { saveDiaryEntry } from "@/lib/diary";
 import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
@@ -37,6 +37,65 @@ import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
 import { toast } from "sonner";
+
+const READING_PROGRESS_KEY = "tarot:reading-progress:v1";
+
+interface PersistedReadingProgress {
+  spreadId: string;
+  cards: DealtTarotCard[];
+  revealed: boolean[];
+  hasStarted: boolean;
+  readingDedupeKey: string | null;
+  consultationId: string | null;
+  consultUsedCredit: boolean | null;
+  consultWelcomeFreeAi: boolean;
+  consultCommitError: string | null;
+  question: string;
+}
+
+function readPersistedReadingProgress(): PersistedReadingProgress | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(READING_PROGRESS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedReadingProgress>;
+    if (
+      !parsed ||
+      typeof parsed.spreadId !== "string" ||
+      !Array.isArray(parsed.cards) ||
+      !Array.isArray(parsed.revealed) ||
+      typeof parsed.hasStarted !== "boolean"
+    ) {
+      return null;
+    }
+    if (parsed.cards.length === 0 || parsed.revealed.length !== parsed.cards.length) {
+      return null;
+    }
+    return {
+      spreadId: parsed.spreadId,
+      cards: parsed.cards as DealtTarotCard[],
+      revealed: parsed.revealed as boolean[],
+      hasStarted: parsed.hasStarted,
+      readingDedupeKey: typeof parsed.readingDedupeKey === "string" ? parsed.readingDedupeKey : null,
+      consultationId: typeof parsed.consultationId === "string" ? parsed.consultationId : null,
+      consultUsedCredit: typeof parsed.consultUsedCredit === "boolean" ? parsed.consultUsedCredit : null,
+      consultWelcomeFreeAi: parsed.consultWelcomeFreeAi === true,
+      consultCommitError: typeof parsed.consultCommitError === "string" ? parsed.consultCommitError : null,
+      question: typeof parsed.question === "string" ? parsed.question : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearPersistedReadingProgress() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(READING_PROGRESS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function suitLabelPt(suit: NonNullable<DealtTarotCard["suit"]>): string {
   const labels = { cups: "Copas", swords: "Espadas", pentacles: "Ouros", wands: "Paus" } as const;
@@ -92,26 +151,47 @@ interface TarotSpreadProps {
 }
 
 const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
-  const navigate = useNavigate();
+  const persistedProgress = initialReading ? null : readPersistedReadingProgress();
+  const persistedSpread =
+    persistedProgress && persistedProgress.hasStarted
+      ? spreadTypes.find((s) => s.id === persistedProgress.spreadId) ?? null
+      : null;
+
   const { user, openAuthDialog, refreshAiQuota, isLoading: authLoading, aiQuota } = useAuth();
   const isNarrow = useIsNarrowViewport();
   const [fromConversionFunnel, setFromConversionFunnel] = useState(() => !!initialReading);
-  const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(() => initialReading?.spread ?? null);
-  const [cards, setCards] = useState<DealtTarotCard[]>(() => initialReading?.cards ?? []);
-  const [revealed, setRevealed] = useState<boolean[]>(() => initialReading?.revealed ?? []);
-  const [hasStarted, setHasStarted] = useState(() => !!initialReading);
+  const [selectedSpread, setSelectedSpread] = useState<SpreadType | null>(
+    () => initialReading?.spread ?? persistedSpread ?? null
+  );
+  const [cards, setCards] = useState<DealtTarotCard[]>(
+    () => initialReading?.cards ?? persistedProgress?.cards ?? []
+  );
+  const [revealed, setRevealed] = useState<boolean[]>(
+    () => initialReading?.revealed ?? persistedProgress?.revealed ?? []
+  );
+  const [hasStarted, setHasStarted] = useState(() => !!initialReading || persistedProgress?.hasStarted === true);
   const [selectedCard, setSelectedCard] = useState<DealtTarotCard | null>(() => {
-    if (!initialReading?.revealed.length) return null;
-    return initialReading.revealed[0] ? initialReading.cards[0] ?? null : null;
+    const sourceRevealed = initialReading?.revealed ?? persistedProgress?.revealed ?? [];
+    const sourceCards = initialReading?.cards ?? persistedProgress?.cards ?? [];
+    const firstRevealedIdx = sourceRevealed.findIndex(Boolean);
+    if (firstRevealedIdx < 0) return null;
+    return sourceCards[firstRevealedIdx] ?? null;
   });
   const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(() =>
-    initialReading ? crypto.randomUUID() : null
+    initialReading ? crypto.randomUUID() : (persistedProgress?.readingDedupeKey ?? null)
   );
-  const [consultationId, setConsultationId] = useState<string | null>(null);
-  const [consultUsedCredit, setConsultUsedCredit] = useState<boolean | null>(null);
-  const [consultWelcomeFreeAi, setConsultWelcomeFreeAi] = useState(false);
+  const [consultationId, setConsultationId] = useState<string | null>(persistedProgress?.consultationId ?? null);
+  const [consultUsedCredit, setConsultUsedCredit] = useState<boolean | null>(
+    persistedProgress?.consultUsedCredit ?? null
+  );
+  const [consultWelcomeFreeAi, setConsultWelcomeFreeAi] = useState(
+    persistedProgress?.consultWelcomeFreeAi === true
+  );
   const [consultCommitLoading, setConsultCommitLoading] = useState(false);
-  const [consultCommitError, setConsultCommitError] = useState<string | null>(null);
+  const [consultCommitError, setConsultCommitError] = useState<string | null>(
+    persistedProgress?.consultCommitError ?? null
+  );
+  const [savedQuestion, setSavedQuestion] = useState<string>(persistedProgress?.question ?? "");
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
@@ -124,14 +204,6 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   const startReading = useCallback(() => {
     if (!selectedSpread) return;
     if (authLoading) return;
-    if (quotaExhausted) {
-      trackEvent("reading_start_blocked_quota");
-      toast.message("Sua leitura gratuita nesta conta já foi usada", {
-        description: "A abrir opções para novas leituras completas…",
-      });
-      void navigate("/creditos");
-      return;
-    }
     setFromConversionFunnel(false);
     const selected = dealSpread(selectedSpread.cardCount);
     trackEvent("reading_started", {
@@ -149,7 +221,8 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setRevealed(new Array(n).fill(false));
     setHasStarted(true);
     setSelectedCard(null);
-  }, [selectedSpread, user, authLoading, openAuthDialog, quotaExhausted, navigate]);
+    setSavedQuestion("");
+  }, [selectedSpread, authLoading]);
 
   useEffect(() => {
     if (!hasStarted || cards.length === 0) return;
@@ -177,7 +250,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setSelectedCard(cards[index]);
   };
 
-  const resetAll = () => {
+  const resetAll = (opts?: { announceReplace?: boolean }) => {
     setFromConversionFunnel(false);
     setSelectedSpread(null);
     setCards([]);
@@ -190,6 +263,19 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setConsultWelcomeFreeAi(false);
     setConsultCommitError(null);
     setConsultCommitLoading(false);
+    setSavedQuestion("");
+    clearPersistedReadingProgress();
+    if (opts?.announceReplace) {
+      toast.message("Você começou uma nova leitura. A anterior foi substituída.");
+    }
+  };
+
+  const handleSwitchSpreadWithConfirm = () => {
+    const ok = window.confirm(
+      "Você já começou uma leitura e vai perder o progresso atual. Deseja trocar de tiragem mesmo assim?"
+    );
+    if (!ok) return;
+    resetAll({ announceReplace: true });
   };
 
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
@@ -254,6 +340,41 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
       cancelled = true;
     };
   }, [allRevealed, user, selectedSpread, readingDedupeKey, cards, refreshAiQuota]);
+
+  useEffect(() => {
+    if (!hasStarted || !selectedSpread || cards.length === 0) {
+      clearPersistedReadingProgress();
+      return;
+    }
+    const payload: PersistedReadingProgress = {
+      spreadId: selectedSpread.id,
+      cards,
+      revealed,
+      hasStarted,
+      readingDedupeKey,
+      consultationId,
+      consultUsedCredit,
+      consultWelcomeFreeAi,
+      consultCommitError,
+      question: savedQuestion,
+    };
+    try {
+      window.sessionStorage.setItem(READING_PROGRESS_KEY, JSON.stringify(payload));
+    } catch {
+      /* ignore */
+    }
+  }, [
+    hasStarted,
+    selectedSpread,
+    cards,
+    revealed,
+    readingDedupeKey,
+    consultationId,
+    consultUsedCredit,
+    consultWelcomeFreeAi,
+    consultCommitError,
+    savedQuestion,
+  ]);
 
   const saveReading = async () => {
     if (!selectedSpread) return;
@@ -336,10 +457,10 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    whileHover={{ scale: authLoading || quotaExhausted ? 1 : 1.05 }}
-                    whileTap={{ scale: authLoading || quotaExhausted ? 1 : 0.95 }}
+                    whileHover={{ scale: authLoading ? 1 : 1.05 }}
+                    whileTap={{ scale: authLoading ? 1 : 0.95 }}
                     onClick={startReading}
-                    disabled={authLoading || quotaExhausted}
+                    disabled={authLoading}
                     className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold transition-all hover:brightness-110 disabled:opacity-50 disabled:pointer-events-none"
                   >
                     {`✦ Iniciar ${selectedSpread.name} ✦`}
@@ -359,11 +480,12 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   )}
                   {user && quotaExhausted && (
                     <p className="text-xs text-muted-foreground font-body max-w-sm px-2">
-                      Sua leitura gratuita nesta conta já foi usada.{" "}
+                      Você pode continuar a tiragem normalmente. A interpretação completa com IA será liberada após ter
+                      saldo ou crédito.{" "}
                       <Link to="/creditos" className="text-primary underline underline-offset-2">
                         Ver opções
                       </Link>{" "}
-                      para novas leituras completas.
+                      para desbloquear.
                     </p>
                   )}
                 </div>
@@ -372,6 +494,17 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           </>
         ) : (
           <>
+            {!allRevealed && (
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={handleSwitchSpreadWithConfirm}
+                  className="text-xs md:text-sm font-body text-muted-foreground underline underline-offset-4 hover:text-primary transition-colors"
+                >
+                  Trocar tiragem (reinicia esta leitura)
+                </button>
+              </div>
+            )}
             {selectedSpread && (
               <motion.p
                 initial={{ opacity: 0 }}
@@ -473,6 +606,8 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 consultCommitLoading={consultCommitLoading}
                 consultCommitError={consultCommitError}
                 guestMode={!user}
+                initialQuestion={savedQuestion}
+                onQuestionChange={setSavedQuestion}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");
                   const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split(/\n+/).filter(Boolean);
@@ -499,7 +634,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   animate={{ opacity: 1 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={resetAll}
+                  onClick={() => resetAll({ announceReplace: true })}
                   className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
                 >
                   {CTA_CONTINUE_READING}

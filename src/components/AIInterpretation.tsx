@@ -28,6 +28,8 @@ interface AIInterpretationProps {
   consultCommitLoading: boolean;
   consultCommitError: string | null;
   guestMode?: boolean;
+  initialQuestion?: string;
+  onQuestionChange?: (value: string) => void;
   onGuestConsumed?: () => void;
 }
 
@@ -42,6 +44,8 @@ const AIInterpretation = ({
   consultCommitLoading,
   consultCommitError,
   guestMode = false,
+  initialQuestion = "",
+  onQuestionChange,
   onGuestConsumed,
 }: AIInterpretationProps) => {
   const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
@@ -49,8 +53,12 @@ const AIInterpretation = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorFooter, setErrorFooter] = useState<ErrorFooter>(null);
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(initialQuestion);
   const [quotaHint, setQuotaHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    onQuestionChange?.(question);
+  }, [question, onQuestionChange]);
 
   useEffect(() => {
     const pq = consumePendingGuestQuestion();
@@ -318,6 +326,25 @@ const AIInterpretation = ({
           </motion.p>
         )}
       </AnimatePresence>
+
+      {guestMode && interpretation && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 space-y-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4 text-center"
+        >
+          <p className="text-sm text-muted-foreground font-body leading-relaxed">
+            Entre agora para continuar sua leitura com mais profundidade e guardar seu caminho.
+          </p>
+          <button
+            type="button"
+            onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_AFTER)}
+            className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
+          >
+            CONTINUAR MINHA LEITURA
+          </button>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {error && (

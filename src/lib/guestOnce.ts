@@ -18,8 +18,8 @@ export const GUEST_DEVICE_LIMIT_BEFORE = "✨ Você tem 1 leitura completa gratu
 
 /** Linhas do convite pós-leitura guest (conta / interpretação completa). */
 export const GUEST_DEVICE_LIMIT_AFTER_LINES = [
-  "✨ Há mais nessa leitura...",
-  "Desbloqueie a interpretação completa e descubra todos os detalhes.",
+  "🔮 Sua leitura revelou algo importante...",
+  "Continue para descobrir o que ainda está oculto nessa resposta.",
 ] as const;
 
 /** Depois de usar no aparelho — modal, toasts e CTAs de login. */
