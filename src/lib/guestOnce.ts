@@ -13,17 +13,31 @@ const GUEST_CONSUMED_KEY = "tarot:guest-once-consumed:v1";
 /** Pergunta vinda do Hero — consumida ao montar a área de IA. */
 export const PENDING_GUEST_QUESTION_KEY = "tarot:pending-question:v1";
 
-/** Antes da 1ª interpretação IA sem conta (limite por aparelho). */
-export const GUEST_DEVICE_LIMIT_BEFORE = "✨ Você tem 1 leitura completa gratuita";
+/** Hint no selector de tiragem (guest): sem “você tem 1 leitura grátis”. */
+export const GUEST_SPREAD_SELECTOR_HINT =
+  "Revele todas as cartas e peça a interpretação com IA. Para novas leituras completas e histórico, crie uma conta.";
 
-/** Linhas do convite pós-leitura guest (conta / interpretação completa). */
-export const GUEST_DEVICE_LIMIT_AFTER_LINES = [
+/** Área de IA antes do primeiro pedido (guest): sem promessa de “1 grátis”. */
+export const GUEST_AI_PRE_INTERP_HINT =
+  "Quando todas as cartas estiverem reveladas, use o botão abaixo para ver a interpretação com IA desta tiragem.";
+
+/** Cenário 1 — após a 1ª interpretação guest (texto completo já mostrado): CTA + modal. */
+export const GUEST_POST_FIRST_INTERP_LINES = [
   "🔮 Sua leitura revelou algo importante...",
-  "Continue para descobrir o que ainda está oculto nessa resposta.",
+  "Para novas interpretações, continue sua leitura criando uma conta.",
 ] as const;
 
-/** Depois de usar no aparelho — modal, toasts e CTAs de login. */
-export const GUEST_DEVICE_LIMIT_AFTER = GUEST_DEVICE_LIMIT_AFTER_LINES.join("\n\n");
+/** Cenário 2 — guest já usou: não há nova interpretação; só convite (sem texto da IA). */
+export const GUEST_BLOCKED_TEASER_LINES = [
+  "✨ Há mais nessa leitura...",
+  "Continue para descobrir o restante da sua resposta.",
+] as const;
+
+/** Texto para `openAuthDialog` após sucesso na 1ª interpretação guest. */
+export const GUEST_DEVICE_LIMIT_AFTER = GUEST_POST_FIRST_INTERP_LINES.join("\n\n");
+
+/** Texto para `openAuthDialog` quando o guest já consumiu / bloqueado. */
+export const GUEST_DEVICE_LIMIT_BLOCKED = GUEST_BLOCKED_TEASER_LINES.join("\n\n");
 
 /** Lê e apaga a pergunta guardada pelo Hero (sessionStorage). */
 export function consumePendingGuestQuestion(): string {

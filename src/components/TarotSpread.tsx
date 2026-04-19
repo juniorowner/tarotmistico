@@ -9,9 +9,9 @@ import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
 import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 import {
+  GUEST_BLOCKED_TEASER_LINES,
   GUEST_DEVICE_LIMIT_AFTER,
-  GUEST_DEVICE_LIMIT_AFTER_LINES,
-  GUEST_DEVICE_LIMIT_BEFORE,
+  GUEST_SPREAD_SELECTOR_HINT,
   hasGuestOnceBeenConsumedLocally,
 } from "@/lib/guestOnce";
 import { useAuth } from "@/contexts/AuthContext";
@@ -469,12 +469,12 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                     <p className="text-center text-xs sm:text-sm text-muted-foreground font-body max-w-sm px-2 leading-relaxed">
                       {hasGuestOnceBeenConsumedLocally() ? (
                         <span className="text-foreground/90">
-                          <span className="font-medium">{GUEST_DEVICE_LIMIT_AFTER_LINES[0]}</span>
+                          <span className="font-medium">{GUEST_BLOCKED_TEASER_LINES[0]}</span>
                           {" · "}
-                          {GUEST_DEVICE_LIMIT_AFTER_LINES[1]}
+                          {GUEST_BLOCKED_TEASER_LINES[1]}
                         </span>
                       ) : (
-                        <span className="text-foreground/90">{GUEST_DEVICE_LIMIT_BEFORE}</span>
+                        <span className="text-foreground/90">{GUEST_SPREAD_SELECTOR_HINT}</span>
                       )}
                     </p>
                   )}

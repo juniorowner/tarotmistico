@@ -7,9 +7,11 @@ import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
 import {
   consumePendingGuestQuestion,
+  GUEST_AI_PRE_INTERP_HINT,
+  GUEST_BLOCKED_TEASER_LINES,
   GUEST_DEVICE_LIMIT_AFTER,
-  GUEST_DEVICE_LIMIT_AFTER_LINES,
-  GUEST_DEVICE_LIMIT_BEFORE,
+  GUEST_DEVICE_LIMIT_BLOCKED,
+  GUEST_POST_FIRST_INTERP_LINES,
   hasGuestOnceBeenConsumedLocally,
   markGuestOnceConsumedLocally,
   requestGuestInterpretationOnce,
@@ -87,7 +89,7 @@ const AIInterpretation = ({
     }
     if (guestMode && hasGuestOnceBeenConsumedLocally()) {
       trackEvent("guest_interpretation_blocked_already_used");
-      openAuthDialog(GUEST_DEVICE_LIMIT_AFTER);
+      openAuthDialog(GUEST_DEVICE_LIMIT_BLOCKED);
       return;
     }
     trackEvent("ai_interpretation_requested", {
@@ -115,7 +117,7 @@ const AIInterpretation = ({
         });
         markGuestOnceConsumedLocally();
         onGuestConsumed?.();
-        setQuotaHint(GUEST_DEVICE_LIMIT_AFTER);
+        setQuotaHint(null);
       } else {
         const result = await requestAIInterpretation(
           {
@@ -160,8 +162,9 @@ const AIInterpretation = ({
         }
         if (e.code === "GUEST_ALREADY_USED") {
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "already_used" });
+          markGuestOnceConsumedLocally();
           onGuestConsumed?.();
-          openAuthDialog(GUEST_DEVICE_LIMIT_AFTER);
+          openAuthDialog(GUEST_DEVICE_LIMIT_BLOCKED);
           return;
         }
         trackEvent("guest_interpretation_failed", {
@@ -170,7 +173,7 @@ const AIInterpretation = ({
         });
         setError(
           e.message ||
-            `Não foi possível concluir a interpretação grátis. Tente de novo.\n\n${GUEST_DEVICE_LIMIT_AFTER}`
+            `Não foi possível concluir a interpretação grátis. Tente de novo.\n\n${GUEST_DEVICE_LIMIT_BLOCKED}`
         );
         return;
       }
@@ -237,16 +240,11 @@ const AIInterpretation = ({
       animate={{ opacity: 1, y: 0 }}
       className="max-w-2xl mx-auto mt-8 scroll-mt-28"
     >
-      {guestMode ? (
-        <div className="text-center mb-5 px-2 max-w-md mx-auto space-y-2">
-          <p className="font-body text-base md:text-lg text-foreground font-medium leading-snug">
-            {GUEST_DEVICE_LIMIT_BEFORE}
-          </p>
-          <p className="text-sm md:text-base text-muted-foreground font-body leading-relaxed">
-            Quando todas as cartas estiverem reveladas, use o botão abaixo para ver a interpretação completa.
-          </p>
-        </div>
-      ) : aiQuota && aiQuota.free_remaining_today > 0 ? (
+      {guestMode && !hasGuestOnceBeenConsumedLocally() && !interpretation ? (
+        <p className="text-center text-sm md:text-base text-muted-foreground font-body mb-5 max-w-md mx-auto px-2 leading-relaxed">
+          {GUEST_AI_PRE_INTERP_HINT}
+        </p>
+      ) : !guestMode && aiQuota && aiQuota.free_remaining_today > 0 ? (
         <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
           <span className="text-primary">✨</span>{" "}
           <strong className="text-foreground/95">Sua primeira interpretação completa com IA nesta conta é gratuita.</strong>{" "}
@@ -265,17 +263,17 @@ const AIInterpretation = ({
         <div className="space-y-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-5 text-center">
           <p className="font-display text-sm text-primary tracking-wide uppercase">Interpretação IA</p>
           <p className="text-base md:text-lg text-foreground font-body font-medium leading-snug">
-            {GUEST_DEVICE_LIMIT_AFTER_LINES[0]}
+            {GUEST_BLOCKED_TEASER_LINES[0]}
           </p>
           <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            {GUEST_DEVICE_LIMIT_AFTER_LINES[1]}
+            {GUEST_BLOCKED_TEASER_LINES[1]}
           </p>
           <button
             type="button"
-            onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_AFTER)}
+            onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_BLOCKED)}
             className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
           >
-            Entrar
+            CONTINUAR MINHA LEITURA
           </button>
         </div>
       )}
@@ -316,7 +314,7 @@ const AIInterpretation = ({
       )}
 
       <AnimatePresence>
-        {quotaHint && interpretation && (
+        {quotaHint && interpretation && !guestMode && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -326,25 +324,6 @@ const AIInterpretation = ({
           </motion.p>
         )}
       </AnimatePresence>
-
-      {guestMode && interpretation && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-3 space-y-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4 text-center"
-        >
-          <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            Entre agora para continuar sua leitura com mais profundidade e guardar seu caminho.
-          </p>
-          <button
-            type="button"
-            onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_AFTER)}
-            className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
-          >
-            CONTINUAR MINHA LEITURA
-          </button>
-        </motion.div>
-      )}
 
       <AnimatePresence>
         {error && (
@@ -387,31 +366,59 @@ const AIInterpretation = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-card border border-primary/20 rounded-xl p-6 space-y-4"
+            className="space-y-4"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <h3 className="font-display text-lg text-primary tracking-wider">
-                Interpretação Mística
-              </h3>
-            </div>
-            <div className="font-body text-foreground/85 text-lg leading-relaxed whitespace-pre-line">
-              {interpretation}
-            </div>
-            <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
-              Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo extra; cada{" "}
-              <strong className="text-foreground/90">nova tiragem</strong> inicia uma consulta nova na sua conta.
-            </p>
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={isLoading || guestMode}
-              onClick={() => void handleInterpret({ replaceExisting: true })}
-              className="mt-3 w-full font-display tracking-[0.12em] uppercase text-xs px-4 py-3 rounded-lg bg-primary/15 text-primary border border-primary/35 hover:bg-primary/25 transition-all disabled:opacity-50"
-            >
-              Gerar novamente (sem custo extra)
-            </motion.button>
+            <motion.div className="bg-card border border-primary/20 rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <h3 className="font-display text-lg text-primary tracking-wider">
+                  Interpretação Mística
+                </h3>
+              </div>
+              <div className="font-body text-foreground/85 text-lg leading-relaxed whitespace-pre-line">
+                {interpretation}
+              </div>
+              {!guestMode && (
+                <>
+                  <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
+                    Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo
+                    extra; cada <strong className="text-foreground/90">nova tiragem</strong> inicia uma consulta nova
+                    na sua conta.
+                  </p>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={isLoading}
+                    onClick={() => void handleInterpret({ replaceExisting: true })}
+                    className="mt-3 w-full font-display tracking-[0.12em] uppercase text-xs px-4 py-3 rounded-lg bg-primary/15 text-primary border border-primary/35 hover:bg-primary/25 transition-all disabled:opacity-50"
+                  >
+                    Gerar novamente (sem custo extra)
+                  </motion.button>
+                </>
+              )}
+            </motion.div>
+            {guestMode && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4 text-center"
+              >
+                <p className="text-sm text-foreground font-body font-medium leading-snug">
+                  {GUEST_POST_FIRST_INTERP_LINES[0]}
+                </p>
+                <p className="text-sm text-muted-foreground font-body leading-relaxed">
+                  {GUEST_POST_FIRST_INTERP_LINES[1]}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_AFTER)}
+                  className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
+                >
+                  CONTINUAR MINHA LEITURA
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
