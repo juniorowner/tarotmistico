@@ -27,7 +27,7 @@ export function ConversionCardPreview({ card, onSeeMeaning }: Props) {
       >
         <p className="font-display text-xs tracking-[0.35em] uppercase text-primary/80">Sua carta</p>
 
-        {/* scale aumenta o desenho mas não o espaço no layout — margem extra evita sobrepor o título */}
+        {/* Mesma face da carta que na mesa: nome + inglês + invertida dentro do flip (sem hideFaceTitle). */}
         <div className="flex w-full flex-col items-center pb-8 sm:pb-10">
           <div className="origin-center scale-105 md:scale-110">
             <TarotCardComponent
@@ -37,19 +37,9 @@ export function ConversionCardPreview({ card, onSeeMeaning }: Props) {
               isRevealed={revealed}
               onReveal={() => setRevealed(true)}
               delay={0}
-              hideFaceTitle
             />
           </div>
         </div>
-
-        <motion.h2
-          initial={{ opacity: 0 }}
-          animate={{ opacity: revealed ? 1 : 0 }}
-          transition={{ delay: 0.3 }}
-          className="font-display text-2xl md:text-4xl text-gold-gradient text-center leading-tight px-2 mt-1 relative z-10"
-        >
-          {card.name.toUpperCase()}
-        </motion.h2>
 
         <motion.button
           type="button"
