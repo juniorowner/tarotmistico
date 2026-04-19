@@ -3,6 +3,7 @@ import {
   FunctionsHttpError,
   FunctionsRelayError,
 } from "@supabase/supabase-js";
+import { invokeEdgeFunction } from "@/lib/invokeEdgeFunction";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFunctionsHttpError } from "@/lib/ai";
 import type { DealtTarotCard } from "@/data/tarotCards";
@@ -86,7 +87,7 @@ export async function requestGuestInterpretationOnce(input: {
       position: input.labels[i] || `Carta ${i + 1}`,
     })),
   };
-  const { data, error } = await supabase.functions.invoke("guest-interpret-once", { body });
+  const { data, error } = await invokeEdgeFunction("guest-interpret-once", { body });
 
   if (
     !error &&
@@ -112,7 +113,7 @@ export async function requestGuestInterpretationOnce(input: {
 
   if (error instanceof FunctionsFetchError) {
     throw new Error(
-      "Sem ligação ao servidor. Verifique a internet e se a função `guest-interpret-once` está deployada."
+      "Não conseguimos obter a interpretação agora. Verifique a internet e tente de novo."
     );
   }
   if (error instanceof FunctionsRelayError) {

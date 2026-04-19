@@ -5,6 +5,7 @@ import {
   type Session,
 } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/invokeEdgeFunction";
 import type { DealtTarotCard } from "@/data/tarotCards";
 
 export interface InterpretationRequest {
@@ -205,7 +206,7 @@ export async function requestAIInterpretation(
   }
 
   const invoke = (token: string) =>
-    supabase.functions.invoke("interpret-reading", {
+    invokeEdgeFunction("interpret-reading", {
       body,
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -259,7 +260,7 @@ export async function requestAIInterpretation(
 
   if (error instanceof FunctionsFetchError) {
     throw new Error(
-      "Sem ligação ao servidor da função. Verifique a internet, o URL do Supabase e se a função `interpret-reading` está deployada."
+      "Não conseguimos contactar a interpretação agora. Verifique a internet e tente de novo."
     );
   }
 

@@ -1,12 +1,13 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/invokeEdgeFunction";
 
 const VISITOR_KEY = "tarot:visitor-id:v2";
 const SESSION_KEY = "tarot:analytics-session:v1";
 const START_KEY = "tarot:analytics-started:v1";
 
 const MAX_EVENTS_PER_SESSION = 450;
-const FLUSH_MS = 4000;
+const FLUSH_MS = 10000;
 const MAX_BATCH = 40;
+const BATCH_GAP_MS = 350;
 
 type QueuedEvent = {
   event_type: string;
@@ -21,8 +22,6 @@ let visitorId = "";
 let startedAt = "";
 let maxScrollEmitted = 0;
 let totalTracked = 0;
-let flushInterval: ReturnType<typeof setInterval> | null = null;
-
 /** Atualizado em initVisitorTracking — usado nos flushes agendados. */
 let authGetter: () => string | null = () => null;
 
@@ -120,7 +119,7 @@ async function sendToServer(
   const secret = import.meta.env.VITE_ANALYTICS_INGEST_SECRET as string | undefined;
   const session = buildSessionPayload(getAuthUserId, sessionEnded);
   try {
-    const { error } = await supabase.functions.invoke("visitor-analytics-ingest", {
+    const { error } = await invokeEdgeFunction("visitor-analytics-ingest", {
       body: { session, events },
       headers: secret ? { "x-analytics-ingest": secret } : {},
     });
@@ -146,6 +145,9 @@ export async function flushVisitorQueue(
     const batch = queue.splice(0, MAX_BATCH);
     const isLastBatch = queue.length === 0;
     await sendToServer(getAuthUserId, batch, ended && isLastBatch);
+    if (!isLastBatch) {
+      await new Promise((r) => setTimeout(r, BATCH_GAP_MS));
+    }
   }
 }
 
@@ -272,10 +274,6 @@ export function initVisitorTracking(getAuthUserId: () => string | null): () => v
     path: `${window.location.pathname}${window.location.search}${window.location.hash}`.slice(0, 2000),
   });
 
-  flushInterval = setInterval(() => {
-    void flushVisitorQueue(authGetter, { ended: false });
-  }, FLUSH_MS);
-
   return () => {
     document.removeEventListener("click", onClick, true);
     window.removeEventListener("scroll", onScroll);
@@ -283,10 +281,6 @@ export function initVisitorTracking(getAuthUserId: () => string | null): () => v
     window.removeEventListener("pagehide", onHide);
     window.removeEventListener("beforeunload", onHide);
     window.removeEventListener("resize", onResize);
-    if (flushInterval) {
-      clearInterval(flushInterval);
-      flushInterval = null;
-    }
     if (flushTimer != null) {
       clearTimeout(flushTimer);
       flushTimer = null;

@@ -3,8 +3,8 @@ import {
   FunctionsHttpError,
   FunctionsRelayError,
 } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 import { getValidAccessTokenForFunctions } from "@/lib/ai";
+import { invokeEdgeFunction } from "@/lib/invokeEdgeFunction";
 import type { DealtTarotCard } from "@/data/tarotCards";
 
 export interface CommitReadingConsultRequest {
@@ -27,7 +27,7 @@ export async function commitReadingConsult(
   data: CommitReadingConsultRequest
 ): Promise<CommitReadingConsultResponse> {
   const token = await getValidAccessTokenForFunctions();
-  const { data: result, error } = await supabase.functions.invoke("commit-reading-consult", {
+  const { data: result, error } = await invokeEdgeFunction("commit-reading-consult", {
     body: {
       dedupeKey: data.dedupeKey,
       spreadId: data.spreadId,
@@ -38,7 +38,9 @@ export async function commitReadingConsult(
   });
 
   if (error instanceof FunctionsFetchError) {
-    throw new Error("Sem ligação ao servidor. Tente novamente.");
+    throw new Error(
+      "Não conseguimos registar a consulta agora. Verifique a internet e tente de novo."
+    );
   }
   if (error instanceof FunctionsRelayError) {
     throw new Error("Serviço temporariamente indisponível.");

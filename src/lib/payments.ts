@@ -3,8 +3,8 @@ import {
   FunctionsHttpError,
   FunctionsRelayError,
 } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 import { getValidAccessTokenForFunctions } from "@/lib/ai";
+import { invokeEdgeFunction } from "@/lib/invokeEdgeFunction";
 import type { CreditPackageId } from "@/lib/creditPackages";
 
 export type MercadoPagoCheckoutPayload = {
@@ -32,13 +32,15 @@ export async function createMercadoPagoCheckout(
   packageId: CreditPackageId
 ): Promise<MercadoPagoCheckoutPayload> {
   const token = await getValidAccessTokenForFunctions();
-  const { data, error } = await supabase.functions.invoke("mercadopago-create-preference", {
+  const { data, error } = await invokeEdgeFunction("mercadopago-create-preference", {
     body: { packageId },
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (error instanceof FunctionsFetchError) {
-    throw new Error("Sem ligação ao servidor. Tente novamente.");
+    throw new Error(
+      "Não conseguimos iniciar o pagamento agora. Verifique a internet e tente de novo."
+    );
   }
   if (error instanceof FunctionsRelayError) {
     throw new Error("Serviço temporariamente indisponível.");
@@ -90,13 +92,15 @@ export async function processMercadoPagoPayment(
     options?.creditOrderId && options.creditOrderId.trim().length > 0
       ? { ...formData, credit_order_id: options.creditOrderId.trim() }
       : { ...formData };
-  const { data, error } = await supabase.functions.invoke("mercadopago-process-payment", {
+  const { data, error } = await invokeEdgeFunction("mercadopago-process-payment", {
     body,
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (error instanceof FunctionsFetchError) {
-    throw new Error("Sem ligação ao servidor. Tente novamente.");
+    throw new Error(
+      "Não conseguimos processar o pagamento agora. Verifique a internet e tente de novo."
+    );
   }
   if (error instanceof FunctionsRelayError) {
     throw new Error("Serviço temporariamente indisponível.");
@@ -127,12 +131,16 @@ export async function processMercadoPagoPayment(
 
 export async function getMercadoPagoPaymentStatus(paymentId: string): Promise<MercadoPagoPaymentStatus> {
   const token = await getValidAccessTokenForFunctions();
-  const { data, error } = await supabase.functions.invoke("mercadopago-payment-status", {
+  const { data, error } = await invokeEdgeFunction("mercadopago-payment-status", {
     body: { paymentId },
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (error instanceof FunctionsFetchError) throw new Error("Sem ligação ao servidor.");
+  if (error instanceof FunctionsFetchError) {
+    throw new Error(
+      "Não conseguimos consultar o pagamento agora. Verifique a internet e tente de novo."
+    );
+  }
   if (error instanceof FunctionsRelayError) throw new Error("Serviço indisponível.");
   if (error instanceof FunctionsHttpError) {
     const t = await error.context.text();
