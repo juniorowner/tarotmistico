@@ -6,7 +6,8 @@ import { UserMenu } from "@/components/UserMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAiQuota, type AiQuotaResponse } from "@/lib/aiQuota";
 import { Button } from "@/components/ui/button";
-import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
+import { CTA_CONTINUE_READING } from "@/lib/ctaCopy";
+import { hasGuestOnceBeenConsumedLocally } from "@/lib/guestOnce";
 
 type QuotaState = { status: "loading" } | { status: "error" } | { status: "ok"; data: AiQuotaResponse };
 
@@ -73,6 +74,8 @@ const BoasVindasCreditos = () => {
   }
 
   const hasWelcomeFree = quotaState.data.free_remaining_today > 0;
+  /** Mesmo browser onde já usou a leitura guest antes de criar conta — não misturar com “ainda não revelou”. */
+  const guestFreeAlreadyUsedOnDevice = hasGuestOnceBeenConsumedLocally();
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,7 +85,32 @@ const BoasVindasCreditos = () => {
 
       <section className="px-4 py-16">
         <div className="mx-auto max-w-3xl text-center">
-          {hasWelcomeFree ? (
+          {guestFreeAlreadyUsedOnDevice ? (
+            <>
+              <p className="text-sm text-primary/90 font-body mb-3">Olá, {friendlyName}</p>
+              <h1 className="font-display text-3xl md:text-5xl text-gold-gradient leading-tight">
+                🔮 Sua jornada começou
+              </h1>
+
+              <p className="mt-6 text-muted-foreground font-body text-base md:text-lg leading-relaxed">
+                Sua primeira leitura já revelou algo importante…
+              </p>
+
+              <p className="mt-3 text-foreground/90 font-body text-base md:text-lg leading-relaxed">
+                Agora você pode continuar explorando novas respostas.
+              </p>
+
+              <div className="mt-10 flex justify-center">
+                <Link
+                  to="/"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
+                >
+                  Nova leitura
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </>
+          ) : hasWelcomeFree ? (
             <>
               <p className="text-sm text-primary/90 font-body mb-3">Olá, {friendlyName}</p>
               <h1 className="font-display text-3xl md:text-5xl text-gold-gradient leading-tight">
@@ -102,7 +130,7 @@ const BoasVindasCreditos = () => {
                   to="/"
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
                 >
-                  {CTA_DISCOVER_MY_ANSWER}
+                  Descobrir minha resposta
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
