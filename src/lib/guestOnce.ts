@@ -23,9 +23,16 @@ export const GUEST_AI_PRE_INTERP_HINT =
 
 /** Cenário 1 — após a 1ª interpretação guest (texto completo já mostrado): CTA + modal. */
 export const GUEST_POST_FIRST_INTERP_LINES = [
-  "🔮 Sua leitura revelou algo importante...",
-  "Para novas interpretações, continue sua leitura criando uma conta.",
+  "✨ Quer aprofundar ainda mais?",
+  "Faça uma nova leitura e descubra novos caminhos.",
 ] as const;
+
+/** Texto extra no modal de auth ao clicar “Fazer nova pergunta” (guest). */
+export const GUEST_POST_FIRST_AUTH_SUBTEXT =
+  "Entre ou crie uma conta para continuar com novas perguntas e interpretações completas.";
+
+/** Rótulo do botão principal após a 1ª interpretação guest. */
+export const GUEST_POST_FIRST_CTA_BUTTON = "👉 Fazer nova pergunta";
 
 /** Cenário 2 — guest já usou: não há nova interpretação; só convite (sem texto da IA). */
 export const GUEST_BLOCKED_TEASER_LINES = [
@@ -34,7 +41,10 @@ export const GUEST_BLOCKED_TEASER_LINES = [
 ] as const;
 
 /** Texto para `openAuthDialog` após sucesso na 1ª interpretação guest. */
-export const GUEST_DEVICE_LIMIT_AFTER = GUEST_POST_FIRST_INTERP_LINES.join("\n\n");
+export const GUEST_DEVICE_LIMIT_AFTER = [
+  ...GUEST_POST_FIRST_INTERP_LINES,
+  GUEST_POST_FIRST_AUTH_SUBTEXT,
+].join("\n\n");
 
 /** Texto para `openAuthDialog` quando o guest já consumiu / bloqueado. */
 export const GUEST_DEVICE_LIMIT_BLOCKED = GUEST_BLOCKED_TEASER_LINES.join("\n\n");

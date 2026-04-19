@@ -11,6 +11,7 @@ import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
 import {
   GUEST_BLOCKED_TEASER_LINES,
   GUEST_DEVICE_LIMIT_AFTER,
+  GUEST_POST_FIRST_CTA_BUTTON,
   GUEST_SPREAD_SELECTOR_HINT,
   hasGuestOnceBeenConsumedLocally,
 } from "@/lib/guestOnce";
@@ -652,6 +653,14 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
               <p className="text-center text-xs text-muted-foreground font-body">
                 Toque em cada carta para revelar
               </p>
+            ) : !user && hasGuestOnceBeenConsumedLocally() ? (
+              <button
+                type="button"
+                onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_AFTER)}
+                className="w-full font-display tracking-[0.08em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
+              >
+                {GUEST_POST_FIRST_CTA_BUTTON}
+              </button>
             ) : (
               <button
                 type="button"
