@@ -104,10 +104,12 @@ serve(async (req) => {
     const tokenHash = await sha256Hex(`tok:${token}`);
     const fpHash = await sha256Hex(`fp:${fp}`);
 
+    // Só token_hash identifica o “aparelho” do guest (UUID em localStorage). fingerprint colide
+    // entre muitos telemóveis com o mesmo UA/idioma/timezone — não usar para bloqueio único.
     const { data: existing } = await admin
       .from("guest_device_locks")
       .select("id")
-      .or(`token_hash.eq.${tokenHash},fingerprint_hash.eq.${fpHash}`)
+      .eq("token_hash", tokenHash)
       .maybeSingle();
     if (existing) {
       return new Response(
@@ -222,8 +224,7 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
       const duplicate =
         msg.includes("duplicate key") ||
         msg.includes("unique constraint") ||
-        msg.includes("guest_device_locks_token_hash_key") ||
-        msg.includes("guest_device_locks_fingerprint_hash_key");
+        msg.includes("guest_device_locks_token_hash_key");
       if (duplicate) {
         return new Response(
           JSON.stringify({
