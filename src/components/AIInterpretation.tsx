@@ -400,9 +400,9 @@ const AIInterpretation = ({
                   whileTap={{ scale: authLoading ? 1 : 0.97 }}
                   onClick={() => void handleInterpret()}
                   disabled={authLoading || (!guestMode && (consultCommitLoading || !!consultCommitError))}
-                  className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-gradient-to-b from-amber-200 via-amber-300 to-amber-400 text-black border border-amber-700/35 shadow-md shadow-amber-900/15 hover:brightness-[1.03] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="h-4 w-4 shrink-0 text-black" />
                   {loggedInWithCredits ? "Desbloquear leitura (1 crédito)" : CTA_DISCOVER_AFTER_ALL_REVEALED}
                 </motion.button>
               )}

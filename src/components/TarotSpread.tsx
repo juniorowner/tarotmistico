@@ -797,18 +797,8 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
               </DialogContent>
             </Dialog>
 
-            {allRevealed && selectedSpread && (
-              <div className="mb-10 flex max-w-lg flex-col gap-3 px-2 sm:mx-auto sm:flex-row sm:items-stretch sm:justify-center">
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35 }}
-                  onClick={scrollToAiInterpretation}
-                  className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all sm:flex-1"
-                >
-                  {CTA_DISCOVER_AFTER_ALL_REVEALED}
-                </motion.button>
+            {allRevealed && selectedSpread && !(user && aiInterpretationReady) && (
+              <div className="mb-10 flex max-w-lg justify-center px-2 sm:mx-auto">
                 <motion.button
                   type="button"
                   initial={{ opacity: 0, y: 8 }}
@@ -820,7 +810,7 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
                     });
                     resetAll({ announceReplace: true });
                   }}
-                  className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all sm:flex-1 sm:max-w-[min(100%,14rem)]"
+                  className="w-full max-w-md font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
                 >
                   {CTA_NEW_READING}
                 </motion.button>
@@ -851,7 +841,7 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
             )}
 
             {allRevealed && selectedSpread && user && aiInterpretationReady && (
-              <div className="mt-8 flex flex-wrap justify-center gap-4">
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                 <motion.button
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -862,6 +852,21 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
                 >
                   <Save className="h-4 w-4" />
                   Salvar no Diário
+                </motion.button>
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    trackEvent("new_reading_clicked", {
+                      after_interpretation: true,
+                    });
+                    resetAll({ announceReplace: true });
+                  }}
+                  className="order-last rounded-lg border border-border px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+                >
+                  {CTA_NEW_READING}
                 </motion.button>
               </div>
             )}
