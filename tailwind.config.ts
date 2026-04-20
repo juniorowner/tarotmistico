@@ -18,6 +18,12 @@ export default {
         display: ['Cinzel', 'serif'],
         body: ['Cormorant Garamond', 'serif'],
       },
+      fontSize: {
+        xs: ["0.85rem", { lineHeight: "1.25rem" }],
+        sm: ["0.98rem", { lineHeight: "1.45rem" }],
+        base: ["1.08rem", { lineHeight: "1.7rem" }],
+        lg: ["1.2rem", { lineHeight: "1.85rem" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
