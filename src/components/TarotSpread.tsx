@@ -679,6 +679,13 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
               >
                 {GUEST_POST_FIRST_CTA_BUTTON}
               </button>
+            ) : user && !!consultCommitError ? (
+              <Link
+                to="/creditos"
+                className="block w-full text-center font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
+              >
+                Comprar créditos
+              </Link>
             ) : (
               <button
                 type="button"
