@@ -122,13 +122,13 @@ serve(async (req) => {
     let usedCredit = false;
     const welcomeFreeAi = false;
 
-    const { data: profileBefore, error: profBeforeErr } = await admin
+    let { data: profileBefore, error: profBeforeErr } = await admin
       .from("profiles")
       .select("credits")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (profBeforeErr || !profileBefore) {
+    if (profBeforeErr) {
       return new Response(
         JSON.stringify({
           error: "Não foi possível carregar o perfil do utilizador.",
@@ -136,6 +136,36 @@ serve(async (req) => {
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Fallback para contas recém-criadas sem linha em profiles (trigger atrasado/falhou).
+    if (!profileBefore) {
+      const { data: insertedProfile, error: insertProfileErr } = await admin
+        .from("profiles")
+        .insert({ id: user.id, credits: 0 })
+        .select("credits")
+        .single();
+
+      if (insertProfileErr || !insertedProfile) {
+        // Se perdeu corrida para outro processo, tenta ler novamente.
+        const { data: racedProfile, error: racedProfileErr } = await admin
+          .from("profiles")
+          .select("credits")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (racedProfileErr || !racedProfile) {
+          return new Response(
+            JSON.stringify({
+              error: "Não foi possível inicializar o perfil do utilizador.",
+              code: "PROFILE_INIT_FAILED",
+            }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        profileBefore = racedProfile;
+      } else {
+        profileBefore = insertedProfile;
+      }
     }
 
     if (profileBefore.credits < 1) {
