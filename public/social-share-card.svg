@@ -1,0 +1,48 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1021"/>
+      <stop offset="1" stop-color="#1F0F3A"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="180" y1="120" x2="980" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4D68A"/>
+      <stop offset="1" stop-color="#C79A3C"/>
+    </linearGradient>
+    <filter id="blur" x="-100" y="-100" width="1400" height="830" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" rx="28" fill="url(#bg)"/>
+
+  <g filter="url(#blur)" opacity="0.28">
+    <circle cx="250" cy="120" r="140" fill="#7A4BFF"/>
+    <circle cx="980" cy="530" r="180" fill="#F6C35B"/>
+  </g>
+
+  <rect x="70" y="70" width="1060" height="490" rx="24" stroke="url(#gold)" stroke-opacity="0.45" stroke-width="2"/>
+
+  <g opacity="0.85">
+    <circle cx="600" cy="145" r="6" fill="#F4D68A"/>
+    <circle cx="600" cy="485" r="6" fill="#F4D68A"/>
+    <circle cx="430" cy="315" r="4" fill="#F4D68A"/>
+    <circle cx="770" cy="315" r="4" fill="#F4D68A"/>
+  </g>
+
+  <text x="600" y="230" text-anchor="middle" fill="#F7E3AF" font-size="72" font-family="Cinzel, Georgia, serif" font-weight="700" letter-spacing="5">
+    TAROT MISTICO
+  </text>
+
+  <text x="600" y="302" text-anchor="middle" fill="#EDE7F9" font-size="34" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" letter-spacing="1">
+    Leitura online com IA
+  </text>
+
+  <text x="600" y="364" text-anchor="middle" fill="#D8C7F4" font-size="28" font-family="Cormorant Garamond, Georgia, serif" font-weight="400">
+    Amor " Carreira " Autoconhecimento
+  </text>
+
+  <rect x="420" y="410" width="360" height="66" rx="33" fill="rgba(244,214,138,0.12)" stroke="url(#gold)" stroke-opacity="0.6"/>
+  <text x="600" y="452" text-anchor="middle" fill="#F4D68A" font-size="28" font-family="Cinzel, Georgia, serif" font-weight="600" letter-spacing="2">
+    DESCOBRIR AGORA
+  </text>
+</svg>

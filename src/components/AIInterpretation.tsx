@@ -18,7 +18,7 @@ import {
   requestGuestInterpretationOnce,
 } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
-import { CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
+import { CTA_DISCOVER_AFTER_ALL_REVEALED } from "@/lib/ctaCopy";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -198,7 +198,7 @@ const AIInterpretation = ({
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "truncated" });
           setError(
             e.message ||
-              `A leitura veio incompleta. Toque em «${CTA_DISCOVER_MY_ANSWER}» de novo.`
+              `A leitura veio incompleta. Toque em «${CTA_DISCOVER_AFTER_ALL_REVEALED}» de novo.`
           );
           return;
         }
@@ -369,7 +369,7 @@ const AIInterpretation = ({
               className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
             >
               <Sparkles className="w-4 h-4" />
-              {loggedInWithCredits ? "Desbloquear leitura (1 crédito)" : CTA_DISCOVER_MY_ANSWER}
+              {loggedInWithCredits ? "Desbloquear leitura (1 crédito)" : CTA_DISCOVER_AFTER_ALL_REVEALED}
             </motion.button>
           )}
         </div>

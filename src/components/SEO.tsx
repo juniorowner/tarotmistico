@@ -10,7 +10,7 @@ type SeoProps = {
 };
 
 const DEFAULT_SITE_NAME = "Tarot Místico";
-const DEFAULT_IMAGE = "/placeholder.svg";
+const DEFAULT_IMAGE = "/social-tarot.png";
 
 function getSiteUrl(): string {
   const fromEnv = import.meta.env.VITE_SITE_URL as string | undefined;

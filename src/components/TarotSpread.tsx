@@ -7,7 +7,11 @@ import { spreadTypes, SpreadType } from "@/data/spreadTypes";
 import { saveDiaryEntry } from "@/lib/diary";
 import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
-import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER, CTA_VIEW_AI_READING } from "@/lib/ctaCopy";
+import {
+  CTA_CONTINUE_READING,
+  CTA_DISCOVER_AFTER_ALL_REVEALED,
+  CTA_VIEW_AI_READING,
+} from "@/lib/ctaCopy";
 import {
   GUEST_BLOCKED_TEASER_LINES,
   GUEST_DEVICE_LIMIT_AFTER,
@@ -33,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Save } from "lucide-react";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
@@ -139,6 +144,27 @@ function CardDetailBody({ card }: { card: DealtTarotCard }) {
 
 const dealSpread = (count: number): DealtTarotCard[] => drawReadingCards(allCards, count);
 
+/** ~scroll-mt-28 / barra fixa: zona “útil” do viewport. */
+const SCROLL_COMFORT_TOP_INSET_PX = 96;
+const SCROLL_COMFORT_BOTTOM_INSET_PX = 24;
+const SCROLL_COMFORT_MIN_VISIBLE_HEIGHT_RATIO = 0.36;
+
+function isElementComfortablyVisibleInViewport(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  if (rect.height <= 0 || rect.width <= 0) return true;
+  const vh = window.innerHeight;
+  const visibleTop = Math.max(rect.top, SCROLL_COMFORT_TOP_INSET_PX);
+  const visibleBottom = Math.min(rect.bottom, vh - SCROLL_COMFORT_BOTTOM_INSET_PX);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  return visibleHeight / rect.height >= SCROLL_COMFORT_MIN_VISIBLE_HEIGHT_RATIO;
+}
+
+function scrollIntoViewSmoothIfNeeded(el: HTMLElement | null | undefined, options: ScrollIntoViewOptions) {
+  if (!el) return;
+  if (isElementComfortablyVisibleInViewport(el)) return;
+  el.scrollIntoView({ ...options, behavior: "smooth" });
+}
+
 /** Sessão já sorteada (ex.: funil de conversão). */
 export interface TarotInitialReading {
   spread: SpreadType;
@@ -178,6 +204,12 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     if (firstRevealedIdx < 0) return null;
     return sourceCards[firstRevealedIdx] ?? null;
   });
+  /** Índice da carta cujo detalhe está aberto (drawer/modal) — para scroll à próxima ao fechar. */
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(() => {
+    const sourceRevealed = initialReading?.revealed ?? persistedProgress?.revealed ?? [];
+    const firstRevealedIdx = sourceRevealed.findIndex(Boolean);
+    return firstRevealedIdx >= 0 ? firstRevealedIdx : null;
+  });
   const [readingDedupeKey, setReadingDedupeKey] = useState<string | null>(() =>
     initialReading ? crypto.randomUUID() : (persistedProgress?.readingDedupeKey ?? null)
   );
@@ -197,6 +229,13 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   const [aiInterpretationReady, setAiInterpretationReady] = useState(false);
   const commitInFlightRef = useRef<Promise<string | null> | null>(null);
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
+  const postRevealScrollDoneRef = useRef(false);
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const revealedRef = useRef(revealed);
+
+  useEffect(() => {
+    revealedRef.current = revealed;
+  }, [revealed]);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
   const quotaExhausted =
@@ -222,10 +261,12 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setConsultWelcomeFreeAi(false);
     setConsultCommitError(null);
     setAiInterpretationReady(false);
+    postRevealScrollDoneRef.current = false;
     setCards(selected);
     setRevealed(new Array(n).fill(false));
     setHasStarted(true);
     setSelectedCard(null);
+    setSelectedSlotIndex(null);
     setSavedQuestion("");
   }, [selectedSpread, authLoading]);
 
@@ -252,6 +293,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
       next[index] = true;
       return next;
     });
+    setSelectedSlotIndex(index);
     setSelectedCard(cards[index]);
   };
 
@@ -262,6 +304,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setRevealed([]);
     setHasStarted(false);
     setSelectedCard(null);
+    setSelectedSlotIndex(null);
     setReadingDedupeKey(null);
     setConsultationId(null);
     setConsultUsedCredit(null);
@@ -270,6 +313,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setConsultCommitLoading(false);
     setSavedQuestion("");
     setAiInterpretationReady(false);
+    postRevealScrollDoneRef.current = false;
     clearPersistedReadingProgress();
     if (opts?.announceReplace) {
       toast.message("Você começou uma nova leitura. A anterior foi substituída.");
@@ -285,6 +329,15 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   };
 
   const allRevealed = revealed.length > 0 && revealed.every(Boolean);
+  const revealedCount = revealed.filter(Boolean).length;
+  const progressTotal = cards.length;
+  const readingProgressPercent = progressTotal > 0 ? Math.round((revealedCount / progressTotal) * 100) : 0;
+  const remainingToReveal = Math.max(0, progressTotal - revealedCount);
+  const firstUnrevealedIndex = revealed.findIndex((r) => !r);
+  const nextPositionLabel =
+    selectedSpread && firstUnrevealedIndex >= 0
+      ? (selectedSpread.labels[firstUnrevealedIndex] ?? "").trim()
+      : "";
 
   /** Alinha GA com o backend: só após revelar todas as cartas (antes da IA / commit). */
   useEffect(() => {
@@ -296,6 +349,75 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
       is_guest: !user,
     });
   }, [allRevealed, hasStarted, selectedSpread, cards.length, readingDedupeKey, user]);
+
+  /** Passo automático: última carta virada → scroll suave → âncora do CTA de interpretação. */
+  useEffect(() => {
+    if (!allRevealed || !hasStarted) {
+      postRevealScrollDoneRef.current = false;
+      return;
+    }
+    if (postRevealScrollDoneRef.current) return;
+    const delayMs = isNarrow ? 520 : 280;
+    const id = window.setTimeout(() => {
+      postRevealScrollDoneRef.current = true;
+      const ctaEl = document.getElementById("cta-pos-revelacao");
+      const aiEl = document.getElementById("bloco-interpretacao-ia");
+      (ctaEl ?? aiEl)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, delayMs);
+    return () => window.clearTimeout(id);
+  }, [allRevealed, hasStarted, isNarrow]);
+
+  const scrollToAiInterpretation = () => {
+    document.getElementById("bloco-interpretacao-ia")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  /** Ao fechar o detalhe da carta: scroll suave para a próxima não revelada (ou CTA/IA se todas reveladas). */
+  const handleCardDetailOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) return;
+      const closedIdx =
+        selectedSlotIndex ??
+        (selectedCard != null ? cards.findIndex((c) => c.id === selectedCard.id) : -1);
+      setSelectedCard(null);
+      setSelectedSlotIndex(null);
+      if (closedIdx < 0) return;
+      const revSnapshot = revealedRef.current;
+      if (revSnapshot.length > 0 && !revSnapshot.every(Boolean)) {
+        toast.message("Toque na próxima carta para continuar", { duration: 3800 });
+      }
+      window.setTimeout(() => {
+        const rev = revealedRef.current;
+        const n = rev.length;
+        if (n === 0) return;
+        if (rev.every(Boolean)) {
+          const ctaEl = document.getElementById("cta-pos-revelacao");
+          const aiEl = document.getElementById("bloco-interpretacao-ia");
+          const target = ctaEl ?? aiEl;
+          scrollIntoViewSmoothIfNeeded(target, { block: "start" });
+          return;
+        }
+        for (let j = closedIdx + 1; j < n; j++) {
+          if (!rev[j]) {
+            scrollIntoViewSmoothIfNeeded(slotRefs.current[j] ?? null, { block: "center" });
+            return;
+          }
+        }
+        for (let j = 0; j < closedIdx; j++) {
+          if (!rev[j]) {
+            scrollIntoViewSmoothIfNeeded(slotRefs.current[j] ?? null, { block: "center" });
+            return;
+          }
+        }
+      }, 300);
+    },
+    [selectedSlotIndex, selectedCard, cards]
+  );
 
   const ensureConsultation = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
@@ -445,19 +567,19 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
             selectedSpread && selectedSpread.cardCount === 1 ? (
               <>
                 Sua carta está na mesa — revele-a e, ao final, use{" "}
-                <span className="text-foreground/90 font-medium">{CTA_DISCOVER_MY_ANSWER}</span>.
+                <span className="text-foreground/90 font-medium">{CTA_DISCOVER_AFTER_ALL_REVEALED}</span>.
               </>
             ) : (
               <>
                 Toque nas outras cartas para seguir a tiragem — ao final, use{" "}
-                <span className="text-foreground/90 font-medium">{CTA_DISCOVER_MY_ANSWER}</span>.
+                <span className="text-foreground/90 font-medium">{CTA_DISCOVER_AFTER_ALL_REVEALED}</span>.
               </>
             )
           ) : (
             <>
               <span className="text-foreground/90 font-medium">1.</span> Escolha a tiragem ·{" "}
               <span className="text-foreground/90 font-medium">2.</span> Revele cada carta ·{" "}
-              <span className="text-foreground/90 font-medium">3.</span> {CTA_DISCOVER_MY_ANSWER}
+              <span className="text-foreground/90 font-medium">3.</span> {CTA_DISCOVER_AFTER_ALL_REVEALED}
             </>
           )}
         </p>
@@ -530,11 +652,65 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
               </motion.p>
             )}
 
+            {selectedSpread && progressTotal > 0 && !allRevealed && (
+              <div
+                id="reading-progress"
+                className="max-w-md mx-auto mb-8 px-2"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <div className="rounded-xl border border-primary/35 bg-gradient-to-b from-primary/12 to-primary/5 px-4 py-4 text-left shadow-md shadow-primary/5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 gap-y-1">
+                    <span className="font-display text-xs tracking-[0.2em] uppercase text-primary">
+                      Progresso da tiragem
+                    </span>
+                    <span className="font-display text-lg tabular-nums text-foreground">
+                      {revealedCount}
+                      <span className="text-muted-foreground/80 text-base font-body font-normal"> / </span>
+                      {progressTotal}
+                    </span>
+                  </div>
+                  <Progress value={readingProgressPercent} className="mt-3 h-2.5 bg-secondary/80" />
+                  <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground font-body">
+                    {remainingToReveal === 0 ? (
+                      <>Todas as cartas estão viradas.</>
+                    ) : remainingToReveal === 1 ? (
+                      <>Falta <span className="font-medium text-foreground/90">1 carta</span> por revelar.</>
+                    ) : (
+                      <>
+                        Faltam{" "}
+                        <span className="font-medium text-foreground/90">{remainingToReveal} cartas</span> por
+                        revelar.
+                      </>
+                    )}
+                  </p>
+                  {nextPositionLabel.length > 0 && (
+                    <p className="mt-1.5 text-center text-[11px] text-muted-foreground/90 font-body">
+                      {remainingToReveal === 1 ? (
+                        <>
+                          Última carta fechada:{" "}
+                          <span className="text-primary/90 font-medium">{nextPositionLabel}</span>.
+                        </>
+                      ) : (
+                        <>
+                          Pode tocar em qualquer carta fechada — por exemplo,{" "}
+                          <span className="text-primary/90 font-medium">{nextPositionLabel}</span>.
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className={`${getGridClass()} mb-12`}>
               {cards.map((card, i) => (
                 <div
                   key={`slot-${card.id}-${i}`}
-                  ref={i === 0 ? firstCardAnchorRef : undefined}
+                  ref={(el) => {
+                    slotRefs.current[i] = el;
+                    if (i === 0) firstCardAnchorRef.current = el;
+                  }}
                   className={i === 0 ? "scroll-mt-28" : undefined}
                 >
                   <TarotCardComponent
@@ -552,9 +728,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
             {/* Mobile: detalhe da carta em drawer (bottom sheet) */}
             <Drawer
               open={isNarrow && !!selectedCard}
-              onOpenChange={(open) => {
-                if (!open) setSelectedCard(null);
-              }}
+              onOpenChange={handleCardDetailOpenChange}
             >
               <DrawerContent className="max-h-[85vh] flex flex-col">
                 {selectedCard && (
@@ -587,9 +761,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
             {/* Desktop: significado completo em modal (evita texto “lá em baixo” fora da vista) */}
             <Dialog
               open={!isNarrow && !!selectedCard}
-              onOpenChange={(open) => {
-                if (!open) setSelectedCard(null);
-              }}
+              onOpenChange={handleCardDetailOpenChange}
             >
               <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(100vw-1.5rem,32rem)] max-w-lg flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:rounded-xl">
                 {selectedCard && (
@@ -610,6 +782,30 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 )}
               </DialogContent>
             </Dialog>
+
+            {allRevealed && selectedSpread && !aiInterpretationReady && !(user && consultCommitError) && (
+              <motion.div
+                id="cta-pos-revelacao"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.38, ease: "easeOut" }}
+                className="max-w-xl mx-auto mb-8 scroll-mt-28 px-2"
+              >
+                <div className="rounded-xl border border-primary/40 bg-gradient-to-b from-primary/12 to-primary/5 px-4 py-6 text-center space-y-3 shadow-lg shadow-primary/10">
+                  <p className="text-sm md:text-base font-body text-muted-foreground leading-relaxed">
+                    Todas as cartas estão reveladas. A secção de interpretação com IA está logo abaixo — confirme a
+                    pergunta e toque no botão para gerar a leitura completa.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={scrollToAiInterpretation}
+                    className="text-xs font-display uppercase tracking-widest text-primary underline-offset-4 hover:underline"
+                  >
+                    Ir para interpretação
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             {allRevealed && selectedSpread && (
               <AIInterpretation
@@ -668,9 +864,20 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
           <div className="pointer-events-auto mx-auto max-w-lg">
             {!allRevealed ? (
-              <p className="text-center text-xs text-muted-foreground font-body">
-                Toque em cada carta para revelar
-              </p>
+              <div className="rounded-xl border border-border/70 bg-card/95 px-3 py-3 shadow-lg backdrop-blur-sm space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display text-[10px] tracking-[0.18em] uppercase text-primary/90">
+                    Progresso
+                  </span>
+                  <span className="font-display text-base tabular-nums text-foreground">
+                    {revealedCount}/{progressTotal}
+                  </span>
+                </div>
+                <Progress value={readingProgressPercent} className="h-2 bg-secondary/80" />
+                <p className="text-center text-[11px] text-muted-foreground font-body leading-snug">
+                  Toque nas cartas fechadas na mesa.
+                </p>
+              </div>
             ) : !user && hasGuestOnceBeenConsumedLocally() ? (
               <button
                 type="button"
@@ -689,14 +896,10 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
             ) : (
               <button
                 type="button"
-                onClick={() =>
-                  document
-                    .getElementById("bloco-interpretacao-ia")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
+                onClick={scrollToAiInterpretation}
                 className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
               >
-                {user && aiInterpretationReady ? CTA_VIEW_AI_READING : CTA_DISCOVER_MY_ANSWER}
+                {user && aiInterpretationReady ? CTA_VIEW_AI_READING : CTA_DISCOVER_AFTER_ALL_REVEALED}
               </button>
             )}
           </div>
