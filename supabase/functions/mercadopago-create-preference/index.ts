@@ -7,6 +7,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+const SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmail(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isValidEmail(value: string): boolean {
+  return SIMPLE_EMAIL_REGEX.test(normalizeEmail(value));
+}
 
 /** Catálogo (espelhar em src/lib/creditPackages.ts) */
 const PACKAGES: Record<
@@ -155,6 +164,7 @@ serve(async (req) => {
       ""
     )}/functions/v1/mercadopago-webhook?secret=${encodeURIComponent(webhookSecret)}`;
 
+    const normalizedUserEmail = normalizeEmail(user.email);
     const preferenceBody = {
       items: [
         {
@@ -164,7 +174,7 @@ serve(async (req) => {
           unit_price: unitPrice,
         },
       ],
-      payer: user.email ? { email: user.email } : undefined,
+      payer: isValidEmail(normalizedUserEmail) ? { email: normalizedUserEmail } : undefined,
       external_reference: orderId,
       metadata: {
         order_id: orderId,
@@ -190,9 +200,16 @@ serve(async (req) => {
     if (!mpRes.ok) {
       console.error("Mercado Pago preference error:", mpData);
       await admin.from("credit_orders").update({ status: "failed" }).eq("id", orderId);
+      const rawMpMessage = String(mpData?.message || mpData?.error || "").toLowerCase();
+      const translatedMessage =
+        rawMpMessage.includes("payer") &&
+        (rawMpMessage.includes("invalid") || rawMpMessage.includes("is invalid")) &&
+        (rawMpMessage.includes("mail") || rawMpMessage.includes("email"))
+          ? "O e-mail informado para o pagamento Pix é inválido. Revise o e-mail e tente novamente."
+          : mpData?.message || mpData?.error || "Erro Mercado Pago ao criar checkout";
       return new Response(
         JSON.stringify({
-          error: mpData?.message || mpData?.error || "Erro Mercado Pago ao criar checkout",
+          error: translatedMessage,
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

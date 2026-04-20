@@ -195,6 +195,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   const [savedQuestion, setSavedQuestion] = useState<string>(persistedProgress?.question ?? "");
   /** Só nesta sessão: evita «Desbloquear» após a IA já ter corrido (utilizador com sessão). */
   const [aiInterpretationReady, setAiInterpretationReady] = useState(false);
+  const commitInFlightRef = useRef<Promise<string | null> | null>(null);
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
@@ -296,12 +297,16 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     });
   }, [allRevealed, hasStarted, selectedSpread, cards.length, readingDedupeKey, user]);
 
-  useEffect(() => {
-    if (!allRevealed || !user || !selectedSpread || !readingDedupeKey || cards.length === 0) {
-      return;
+  const ensureConsultation = useCallback(async (): Promise<string | null> => {
+    if (!user) return null;
+    if (consultationId) return consultationId;
+    if (!allRevealed || !selectedSpread || !readingDedupeKey || cards.length === 0) {
+      return null;
     }
-    let cancelled = false;
-    void (async () => {
+    if (commitInFlightRef.current) {
+      return commitInFlightRef.current;
+    }
+    const run = (async () => {
       setConsultCommitLoading(true);
       setConsultCommitError(null);
       try {
@@ -311,7 +316,6 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           spreadName: selectedSpread.name,
           cards,
         });
-        if (cancelled) return;
         setConsultationId(res.consultation_id);
         setConsultUsedCredit(res.used_credit);
         setConsultWelcomeFreeAi(res.welcome_free_ai === true);
@@ -321,8 +325,8 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           free_remaining_today: res.free_remaining_today,
         });
         await refreshAiQuota();
+        return res.consultation_id;
       } catch (err) {
-        if (cancelled) return;
         const e = err as Error & { code?: string };
         if (e.code === "QUOTA_EXCEEDED") {
           trackEvent("consultation_commit_quota_exceeded");
@@ -337,14 +341,16 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
         setConsultationId(null);
         setConsultUsedCredit(null);
         setConsultWelcomeFreeAi(false);
+        return null;
       } finally {
-        if (!cancelled) setConsultCommitLoading(false);
+        setConsultCommitLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [allRevealed, user, selectedSpread, readingDedupeKey, cards, refreshAiQuota]);
+    commitInFlightRef.current = run;
+    const consultation = await run;
+    commitInFlightRef.current = null;
+    return consultation;
+  }, [user, consultationId, allRevealed, selectedSpread, readingDedupeKey, cards, refreshAiQuota]);
 
   useEffect(() => {
     if (!hasStarted || !selectedSpread || cards.length === 0) {
@@ -617,6 +623,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 guestMode={!user}
                 initialQuestion={savedQuestion}
                 onQuestionChange={setSavedQuestion}
+                onEnsureConsultation={ensureConsultation}
                 onInterpretationReady={() => setAiInterpretationReady(true)}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");

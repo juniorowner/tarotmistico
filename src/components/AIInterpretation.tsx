@@ -34,6 +34,7 @@ interface AIInterpretationProps {
   initialQuestion?: string;
   onQuestionChange?: (value: string) => void;
   onGuestConsumed?: () => void;
+  onEnsureConsultation?: () => Promise<string | null>;
   /** Chamado quando a interpretação fica disponível (guest ou conta). */
   onInterpretationReady?: () => void;
 }
@@ -52,6 +53,7 @@ const AIInterpretation = ({
   initialQuestion = "",
   onQuestionChange,
   onGuestConsumed,
+  onEnsureConsultation,
   onInterpretationReady,
 }: AIInterpretationProps) => {
   const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
@@ -83,7 +85,7 @@ const AIInterpretation = ({
       );
       return;
     }
-    if (!guestMode && (consultCommitLoading || !consultationId)) {
+    if (!guestMode && consultCommitLoading) {
       return;
     }
     if (!guestMode && consultCommitError) {
@@ -143,6 +145,13 @@ const AIInterpretation = ({
         onGuestConsumed?.();
         setQuotaHint(null);
       } else {
+        let effectiveConsultationId = consultationId;
+        if (!consultationId) {
+          effectiveConsultationId = (await onEnsureConsultation?.()) ?? null;
+          if (!effectiveConsultationId) {
+            return;
+          }
+        }
         let result: Awaited<ReturnType<typeof requestAIInterpretation>> | null = null;
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
@@ -153,7 +162,7 @@ const AIInterpretation = ({
                 labels,
                 cards,
                 question: question.trim() || undefined,
-                consultationId: consultationId as string,
+                consultationId: effectiveConsultationId as string,
                 replaceExisting: opts?.replaceExisting === true,
               },
               { session }
@@ -356,7 +365,7 @@ const AIInterpretation = ({
               whileHover={{ scale: authLoading ? 1 : 1.03 }}
               whileTap={{ scale: authLoading ? 1 : 0.97 }}
               onClick={() => void handleInterpret()}
-              disabled={authLoading || (!guestMode && (consultCommitLoading || !consultationId || !!consultCommitError))}
+              disabled={authLoading || (!guestMode && (consultCommitLoading || !!consultCommitError))}
               className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
             >
               <Sparkles className="w-4 h-4" />

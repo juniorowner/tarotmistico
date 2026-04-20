@@ -41,6 +41,15 @@ function normalizePaymentErrorMessage(messageRaw: string): string {
   return msg || "Não foi possível processar o pagamento.";
 }
 
+function isPayerEmailInvalidMessage(messageRaw: string): boolean {
+  const lower = String(messageRaw || "").toLowerCase();
+  return (
+    lower.includes("payer") &&
+    (lower.includes("invalid") || lower.includes("is invalid")) &&
+    (lower.includes("mail") || lower.includes("email"))
+  );
+}
+
 export async function createMercadoPagoCheckout(
   packageId: CreditPackageId
 ): Promise<MercadoPagoCheckoutPayload> {
@@ -63,7 +72,11 @@ export async function createMercadoPagoCheckout(
     let msg = "Não foi possível iniciar o pagamento.";
     try {
       const j = JSON.parse(t) as { error?: string };
-      if (j.error) msg = j.error;
+      if (j.error) {
+        msg = isPayerEmailInvalidMessage(j.error)
+          ? "O e-mail informado para o pagamento Pix é inválido. Revise o e-mail e tente novamente."
+          : j.error;
+      }
     } catch {
       /* ignore */
     }

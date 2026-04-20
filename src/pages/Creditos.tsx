@@ -46,6 +46,15 @@ function formatCountdownMmSs(totalSec: number): string {
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
+function isPayerEmailInvalidMessage(messageRaw: string): boolean {
+  const lower = String(messageRaw || "").toLowerCase();
+  return (
+    lower.includes("payer") &&
+    (lower.includes("invalid") || lower.includes("is invalid")) &&
+    (lower.includes("mail") || lower.includes("email"))
+  );
+}
+
 function translateLedgerEventType(eventTypeRaw: string): string {
   const key = String(eventTypeRaw || "").toLowerCase();
   const labels: Record<string, string> = {
@@ -262,7 +271,16 @@ const Creditos = () => {
       await processPixPayment(packageId, effectivePayerEmail);
     } catch (e) {
       trackEvent("pix_payment_failed");
-      toast.error(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
+      const msg = e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.";
+      if (isPayerEmailInvalidMessage(msg)) {
+        resetCheckoutState();
+        setCheckoutNeedsEmailFix(true);
+        setCheckoutError("O e-mail informado para o pagamento Pix é inválido. Corrija no modal para continuar.");
+        setCheckoutOpen(true);
+        toast.error("E-mail inválido para pagamento Pix. Corrija no modal para continuar.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setPaying(null);
     }
@@ -281,9 +299,14 @@ const Creditos = () => {
     try {
       await processPixPayment(pendingPackageId, effectivePayerEmail);
     } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.";
       setCheckoutNeedsEmailFix(true);
-      setCheckoutError(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
-      toast.error(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
+      setCheckoutError(
+        isPayerEmailInvalidMessage(msg)
+          ? "O e-mail informado para o pagamento Pix é inválido. Corrija e tente novamente."
+          : msg
+      );
+      toast.error(isPayerEmailInvalidMessage(msg) ? "E-mail inválido para pagamento Pix." : msg);
     } finally {
       setRetryingFromModal(false);
     }
