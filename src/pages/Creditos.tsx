@@ -277,11 +277,45 @@ const Creditos = () => {
   };
 
   useEffect(() => {
-    if (!checkoutOpen || !checkoutPaymentId) return;
+    if (!checkoutOpen || (!checkoutPaymentId && !checkoutOrderId)) return;
     let cancelled = false;
     let timer: number | null = null;
 
     const poll = async () => {
+      // Fallback: se o pedido já foi marcado como pago no backend,
+      // confirma no modal mesmo sem retorno "approved" do provedor.
+      if (checkoutOrderId) {
+        try {
+          const { data: orderRow } = await supabase
+            .from("credit_orders")
+            .select("status")
+            .eq("id", checkoutOrderId)
+            .maybeSingle();
+          if (cancelled) return;
+          const orderStatus = String(orderRow?.status || "").toLowerCase();
+          if (orderStatus === "paid") {
+            trackEvent("pix_payment_approved_order_fallback");
+            toast.success("Pagamento confirmado! Créditos atualizados.");
+            await refreshAiQuota();
+            await refreshOrders();
+            setCheckoutOpen(false);
+            setCheckoutOrderId(null);
+            setCheckoutPaymentId(null);
+            setCheckoutStatus(null);
+            setCheckoutQrCode(null);
+            setCheckoutQrImage(null);
+            return;
+          }
+        } catch {
+          // segue para polling do status do provedor
+        }
+      }
+
+      if (!checkoutPaymentId) {
+        if (!cancelled) timer = window.setTimeout(poll, 4000);
+        return;
+      }
+
       try {
         const res = await getMercadoPagoPaymentStatus(checkoutPaymentId);
         if (cancelled) return;
@@ -310,7 +344,7 @@ const Creditos = () => {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [checkoutOpen, checkoutPaymentId, refreshAiQuota, refreshOrders]);
+  }, [checkoutOpen, checkoutPaymentId, checkoutOrderId, refreshAiQuota, refreshOrders]);
 
   useEffect(() => {
     if (!checkoutOpen || !checkoutPaymentId) {
