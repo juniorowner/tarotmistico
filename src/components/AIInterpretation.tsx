@@ -30,10 +30,14 @@ interface AIInterpretationProps {
   consultationId: string | null;
   consultCommitLoading: boolean;
   consultCommitError: string | null;
+  /** Primeira interpretação completa grátis da conta nesta consulta — não permitir regenerar na mesma tiragem. */
+  welcomeFreeConsult?: boolean;
   guestMode?: boolean;
   initialQuestion?: string;
   onQuestionChange?: (value: string) => void;
   onGuestConsumed?: () => void;
+  /** Chamado quando a interpretação fica disponível (guest ou conta). */
+  onInterpretationReady?: () => void;
 }
 
 type ErrorFooter = "quota" | "included" | null;
@@ -46,10 +50,12 @@ const AIInterpretation = ({
   consultationId,
   consultCommitLoading,
   consultCommitError,
+  welcomeFreeConsult = false,
   guestMode = false,
   initialQuestion = "",
   onQuestionChange,
   onGuestConsumed,
+  onInterpretationReady,
 }: AIInterpretationProps) => {
   const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
   const [interpretation, setInterpretation] = useState<string | null>(null);
@@ -112,6 +118,7 @@ const AIInterpretation = ({
           question: question.trim() || undefined,
         });
         setInterpretation(result.interpretation);
+        onInterpretationReady?.();
         trackEvent("guest_interpretation_success", {
           spread_id: spreadId,
           has_question: question.trim().length > 0,
@@ -133,6 +140,7 @@ const AIInterpretation = ({
           { session }
         );
         setInterpretation(result.interpretation);
+        onInterpretationReady?.();
         trackEvent("ai_interpretation_success", {
           spread_id: spreadId,
           used_credit: result.used_credit ?? null,
@@ -158,6 +166,14 @@ const AIInterpretation = ({
           setError(
             e.message ||
               "O servidor não conseguiu guardar o registo da consulta. Tente de novo; se persistir, confirme no Supabase a tabela guest_questions e as migrations."
+          );
+          return;
+        }
+        if (e.code === "GUEST_IP_DAILY_LIMIT") {
+          trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "ip_daily_limit" });
+          setError(
+            e.message ||
+              "Limite de interpretações gratuitas para esta rede hoje. Crie uma conta para continuar ou tente amanhã."
           );
           return;
         }
@@ -379,7 +395,7 @@ const AIInterpretation = ({
               <div className="font-body text-foreground/85 text-lg leading-relaxed whitespace-pre-line">
                 {interpretation}
               </div>
-              {!guestMode && (
+              {!guestMode && !welcomeFreeConsult && (
                 <>
                   <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
                     Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo
@@ -397,6 +413,12 @@ const AIInterpretation = ({
                     Gerar novamente (sem custo extra)
                   </motion.button>
                 </>
+              )}
+              {!guestMode && welcomeFreeConsult && (
+                <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
+                  Esta foi a sua interpretação gratuita de boas-vindas nesta tiragem. Para ver outra leitura com IA,
+                  faça uma <strong className="text-foreground/90">nova tiragem</strong>.
+                </p>
               )}
             </motion.div>
             {guestMode && (

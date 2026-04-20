@@ -7,7 +7,7 @@ import { spreadTypes, SpreadType } from "@/data/spreadTypes";
 import { saveDiaryEntry } from "@/lib/diary";
 import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
-import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER } from "@/lib/ctaCopy";
+import { CTA_CONTINUE_READING, CTA_DISCOVER_MY_ANSWER, CTA_VIEW_AI_READING } from "@/lib/ctaCopy";
 import {
   GUEST_BLOCKED_TEASER_LINES,
   GUEST_DEVICE_LIMIT_AFTER,
@@ -193,6 +193,8 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     persistedProgress?.consultCommitError ?? null
   );
   const [savedQuestion, setSavedQuestion] = useState<string>(persistedProgress?.question ?? "");
+  /** Só nesta sessão: evita «Desbloquear» após a IA já ter corrido (utilizador com sessão). */
+  const [aiInterpretationReady, setAiInterpretationReady] = useState(false);
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
@@ -218,6 +220,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setConsultUsedCredit(null);
     setConsultWelcomeFreeAi(false);
     setConsultCommitError(null);
+    setAiInterpretationReady(false);
     setCards(selected);
     setRevealed(new Array(n).fill(false));
     setHasStarted(true);
@@ -265,6 +268,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     setConsultCommitError(null);
     setConsultCommitLoading(false);
     setSavedQuestion("");
+    setAiInterpretationReady(false);
     clearPersistedReadingProgress();
     if (opts?.announceReplace) {
       toast.message("Você começou uma nova leitura. A anterior foi substituída.");
@@ -427,7 +431,11 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           Sua leitura
         </motion.h2>
         <p className="text-muted-foreground font-body text-sm md:text-base mb-2 max-w-lg mx-auto leading-relaxed">
-          {fromConversionFunnel ? (
+          {hasStarted && allRevealed && aiInterpretationReady ? (
+            <span className="text-foreground/90">
+              A interpretação com IA desta leitura está na secção abaixo.
+            </span>
+          ) : fromConversionFunnel ? (
             selectedSpread && selectedSpread.cardCount === 1 ? (
               <>
                 Sua carta está na mesa — revele-a e, ao final, use{" "}
@@ -606,9 +614,11 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 consultationId={consultationId}
                 consultCommitLoading={consultCommitLoading}
                 consultCommitError={consultCommitError}
+                welcomeFreeConsult={consultWelcomeFreeAi}
                 guestMode={!user}
                 initialQuestion={savedQuestion}
                 onQuestionChange={setSavedQuestion}
+                onInterpretationReady={() => setAiInterpretationReady(true)}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");
                   const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split(/\n+/).filter(Boolean);
@@ -671,7 +681,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 }
                 className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all"
               >
-                {CTA_DISCOVER_MY_ANSWER}
+                {user && aiInterpretationReady ? CTA_VIEW_AI_READING : CTA_DISCOVER_MY_ANSWER}
               </button>
             )}
           </div>

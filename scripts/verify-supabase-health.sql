@@ -11,6 +11,7 @@ from information_schema.tables
 where table_schema = 'public'
   and table_name in (
     'guest_device_locks',
+    'guest_ip_daily_counts',
     'guest_questions',
     'reading_consults',
     'visitor_sessions',

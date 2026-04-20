@@ -28,6 +28,23 @@ async function sha256Hex(input: string): Promise<string> {
   return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function clientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return (
+    req.headers.get("cf-connecting-ip") ??
+    req.headers.get("x-real-ip") ??
+    ""
+  ).trim();
+}
+
+function utcTodayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /** Junta todo o texto devolvido pelo Gemini (vários `content.parts`). */
 function extractGeminiInterpretationText(data: Record<string, unknown>): string {
   const candidates = data.candidates as
@@ -103,6 +120,34 @@ serve(async (req) => {
 
     const tokenHash = await sha256Hex(`tok:${token}`);
     const fpHash = await sha256Hex(`fp:${fp}`);
+
+    const rawIp = clientIp(req);
+    const ipHash = rawIp ? await sha256Hex(`ip:${rawIp}`) : "";
+    const maxPerIp = Math.max(
+      1,
+      parseInt(Deno.env.get("GUEST_MAX_COMPLETIONS_PER_IP_PER_DAY") ?? "3", 10) || 3
+    );
+    const dayUtc = utcTodayDateString();
+
+    if (ipHash) {
+      const { data: ipRow } = await admin
+        .from("guest_ip_daily_counts")
+        .select("completions")
+        .eq("ip_hash", ipHash)
+        .eq("day_utc", dayUtc)
+        .maybeSingle();
+      const ipCount = ipRow?.completions ?? 0;
+      if (ipCount >= maxPerIp) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "O limite de interpretações gratuitas para esta rede hoje foi atingido. Crie uma conta ou tente novamente amanhã.",
+            code: "GUEST_IP_DAILY_LIMIT",
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // Só token_hash identifica o “aparelho” do guest (UUID em localStorage). fingerprint colide
     // entre muitos telemóveis com o mesmo UA/idioma/timezone — não usar para bloqueio único.
@@ -268,6 +313,23 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    if (ipHash) {
+      const { data: ipBefore } = await admin
+        .from("guest_ip_daily_counts")
+        .select("completions")
+        .eq("ip_hash", ipHash)
+        .eq("day_utc", dayUtc)
+        .maybeSingle();
+      const next = (ipBefore?.completions ?? 0) + 1;
+      const { error: ipErr } = await admin.from("guest_ip_daily_counts").upsert(
+        { ip_hash: ipHash, day_utc: dayUtc, completions: next },
+        { onConflict: "ip_hash,day_utc" }
+      );
+      if (ipErr) {
+        console.error("guest_ip_daily_counts upsert:", ipErr);
+      }
     }
 
     return new Response(

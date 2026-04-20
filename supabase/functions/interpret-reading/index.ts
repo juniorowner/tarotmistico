@@ -241,6 +241,17 @@ serve(async (req) => {
       );
     }
 
+    if (replaceExisting && consult.welcome_free_ai) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "A interpretação gratuita de boas-vindas não pode ser gerada de novo na mesma tiragem. Faça uma nova tiragem para outra leitura com IA.",
+          code: "WELCOME_FREE_NO_REPLACE",
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Regra de produto: consulta registada (grátis do dia ou paga) pode gerar IA.
 
     let { data: priorAi } = await admin
