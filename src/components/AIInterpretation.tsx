@@ -7,7 +7,6 @@ import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
 import {
   consumePendingGuestQuestion,
-  GUEST_AI_PRE_INTERP_HINT,
   GUEST_BLOCKED_TEASER_LINES,
   GUEST_DEVICE_LIMIT_AFTER,
   GUEST_DEVICE_LIMIT_BLOCKED,
@@ -306,11 +305,7 @@ const AIInterpretation = ({
       animate={{ opacity: 1, y: 0 }}
       className="max-w-2xl mx-auto mt-8 scroll-mt-28"
     >
-      {guestMode && !hasGuestOnceBeenConsumedLocally() && !interpretation ? (
-        <p className="text-center text-sm md:text-base text-muted-foreground font-body mb-5 max-w-md mx-auto px-2 leading-relaxed">
-          {GUEST_AI_PRE_INTERP_HINT}
-        </p>
-      ) : !guestMode && aiQuota && aiQuota.credits_balance > 0 ? (
+      {!guestMode && aiQuota && aiQuota.credits_balance > 0 ? (
         <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
           <span className="text-primary">✨</span>{" "}
           Cada interpretação completa usa <strong className="text-foreground/95">1 crédito</strong> na conta.

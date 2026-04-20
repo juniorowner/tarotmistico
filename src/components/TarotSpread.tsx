@@ -350,7 +350,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     });
   }, [allRevealed, hasStarted, selectedSpread, cards.length, readingDedupeKey, user]);
 
-  /** Passo automático: última carta virada → scroll suave → âncora do CTA de interpretação. */
+  /** Passo automático: última carta virada → scroll suave → bloco de interpretação com IA. */
   useEffect(() => {
     if (!allRevealed || !hasStarted) {
       postRevealScrollDoneRef.current = false;
@@ -360,9 +360,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     const delayMs = isNarrow ? 520 : 280;
     const id = window.setTimeout(() => {
       postRevealScrollDoneRef.current = true;
-      const ctaEl = document.getElementById("cta-pos-revelacao");
-      const aiEl = document.getElementById("bloco-interpretacao-ia");
-      (ctaEl ?? aiEl)?.scrollIntoView({
+      document.getElementById("bloco-interpretacao-ia")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
@@ -377,7 +375,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
     });
   };
 
-  /** Ao fechar o detalhe da carta: scroll suave para a próxima não revelada (ou CTA/IA se todas reveladas). */
+  /** Ao fechar o detalhe da carta: scroll suave para a próxima não revelada (ou bloco de IA se todas reveladas). */
   const handleCardDetailOpenChange = useCallback(
     (open: boolean) => {
       if (open) return;
@@ -396,10 +394,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
         const n = rev.length;
         if (n === 0) return;
         if (rev.every(Boolean)) {
-          const ctaEl = document.getElementById("cta-pos-revelacao");
-          const aiEl = document.getElementById("bloco-interpretacao-ia");
-          const target = ctaEl ?? aiEl;
-          scrollIntoViewSmoothIfNeeded(target, { block: "start" });
+          scrollIntoViewSmoothIfNeeded(document.getElementById("bloco-interpretacao-ia"), { block: "start" });
           return;
         }
         for (let j = closedIdx + 1; j < n; j++) {
@@ -782,30 +777,6 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 )}
               </DialogContent>
             </Dialog>
-
-            {allRevealed && selectedSpread && !aiInterpretationReady && !(user && consultCommitError) && (
-              <motion.div
-                id="cta-pos-revelacao"
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.38, ease: "easeOut" }}
-                className="max-w-xl mx-auto mb-8 scroll-mt-28 px-2"
-              >
-                <div className="rounded-xl border border-primary/40 bg-gradient-to-b from-primary/12 to-primary/5 px-4 py-6 text-center space-y-3 shadow-lg shadow-primary/10">
-                  <p className="text-sm md:text-base font-body text-muted-foreground leading-relaxed">
-                    Todas as cartas estão reveladas. A secção de interpretação com IA está logo abaixo — confirme a
-                    pergunta e toque no botão para gerar a leitura completa.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={scrollToAiInterpretation}
-                    className="text-xs font-display uppercase tracking-widest text-primary underline-offset-4 hover:underline"
-                  >
-                    Ir para interpretação
-                  </button>
-                </div>
-              </motion.div>
-            )}
 
             {allRevealed && selectedSpread && (
               <AIInterpretation

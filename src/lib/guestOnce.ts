@@ -17,10 +17,6 @@ export const PENDING_GUEST_QUESTION_KEY = "tarot:pending-question:v1";
 export const GUEST_SPREAD_SELECTOR_HINT =
   "Revele todas as cartas e peça a interpretação com IA. Para novas leituras completas e histórico, crie uma conta.";
 
-/** Área de IA antes do primeiro pedido (guest): sem promessa de “1 grátis”. */
-export const GUEST_AI_PRE_INTERP_HINT =
-  "Quando todas as cartas estiverem reveladas, use o botão abaixo para ver a interpretação com IA desta tiragem.";
-
 /** Cenário 1 — após a 1ª interpretação guest (texto completo já mostrado): CTA + modal. */
 export const GUEST_POST_FIRST_INTERP_LINES = [
   "✨ Quer aprofundar ainda mais?",

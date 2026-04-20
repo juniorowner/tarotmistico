@@ -148,10 +148,10 @@ const Index = () => {
         <SiteNavBar>
           <Link
             to="/diario"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 backdrop-blur border border-border hover:border-primary/40 text-primary transition-all font-display text-xs tracking-wider uppercase"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-card/70 px-2 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50 sm:gap-1.5 sm:px-2.5"
           >
-            <BookOpen className="w-4 h-4" />
-            Diário
+            <BookOpen className="h-3.5 w-3.5 shrink-0" />
+            <span className="whitespace-nowrap">Diário</span>
           </Link>
           <UserMenu />
         </SiteNavBar>

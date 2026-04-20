@@ -29,7 +29,12 @@ export function SiteNavBar({ children, className }: SiteNavBarProps) {
         className
       )}
     >
-      <div className="pointer-events-auto flex w-full justify-end items-center gap-2 flex-wrap max-w-[min(100%,calc(100vw-2rem))] ml-auto">
+      <div
+        className={cn(
+          "pointer-events-auto ml-auto flex max-w-full min-w-0 flex-nowrap items-center justify-end gap-1 sm:gap-2",
+          "overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        )}
+      >
         {children}
       </div>
     </header>

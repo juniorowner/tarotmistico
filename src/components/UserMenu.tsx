@@ -64,15 +64,15 @@ export function UserMenu() {
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap justify-end">
+    <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2">
       {showCreditsNav ? (
         <Link
           to="/creditos"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-card/70 px-2.5 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-card/70 px-2 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50 sm:gap-1.5 sm:px-2.5"
           title="Pacotes e saldo para novas leituras completas"
         >
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          <span>Créditos</span>
+          <span className="whitespace-nowrap">Créditos</span>
           <span className="tabular-nums font-semibold text-foreground">{n}</span>
         </Link>
       ) : null}
@@ -81,7 +81,7 @@ export function UserMenu() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex max-w-[min(100vw-12rem,11rem)] items-center gap-1.5 rounded-lg border border-border/60 bg-card/40 px-2 py-1.5 text-left text-xs text-muted-foreground font-body transition-colors hover:bg-card/70 hover:text-foreground hover:border-border"
+            className="inline-flex max-w-[min(100vw-10rem,7rem)] items-center gap-1 rounded-lg border border-border/60 bg-card/40 px-1.5 py-1.5 text-left text-xs text-muted-foreground font-body transition-colors hover:bg-card/70 hover:text-foreground hover:border-border sm:max-w-[min(100vw-12rem,11rem)] sm:gap-1.5 sm:px-2"
             title={user.email ?? "Conta"}
           >
             <User className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
@@ -155,10 +155,9 @@ export function UserMenu() {
         variant="ghost"
         size="sm"
         onClick={() => signOut()}
-        className="text-xs uppercase font-display tracking-wider h-8 px-2"
+        className="h-8 shrink-0 px-1.5 font-display text-[11px] uppercase tracking-wider sm:px-2"
       >
         <LogOut className="h-3.5 w-3.5 mr-1" />
-        Sair
       </Button>
     </div>
   );
