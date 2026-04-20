@@ -640,16 +640,18 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                   <Save className="w-4 h-4" />
                   Salvar no Diário
                 </motion.button>
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => resetAll({ announceReplace: true })}
-                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
-                >
-                  {CTA_CONTINUE_READING}
-                </motion.button>
+                {!(!user && hasGuestOnceBeenConsumedLocally()) && (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => resetAll({ announceReplace: true })}
+                    className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
+                  >
+                    {CTA_CONTINUE_READING}
+                  </motion.button>
+                )}
               </div>
             )}
           </>
