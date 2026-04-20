@@ -614,7 +614,6 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 consultationId={consultationId}
                 consultCommitLoading={consultCommitLoading}
                 consultCommitError={consultCommitError}
-                welcomeFreeConsult={consultWelcomeFreeAi}
                 guestMode={!user}
                 initialQuestion={savedQuestion}
                 onQuestionChange={setSavedQuestion}

@@ -30,8 +30,6 @@ interface AIInterpretationProps {
   consultationId: string | null;
   consultCommitLoading: boolean;
   consultCommitError: string | null;
-  /** Primeira interpretação completa grátis da conta nesta consulta — não permitir regenerar na mesma tiragem. */
-  welcomeFreeConsult?: boolean;
   guestMode?: boolean;
   initialQuestion?: string;
   onQuestionChange?: (value: string) => void;
@@ -50,7 +48,6 @@ const AIInterpretation = ({
   consultationId,
   consultCommitLoading,
   consultCommitError,
-  welcomeFreeConsult = false,
   guestMode = false,
   initialQuestion = "",
   onQuestionChange,
@@ -64,6 +61,7 @@ const AIInterpretation = ({
   const [errorFooter, setErrorFooter] = useState<ErrorFooter>(null);
   const [question, setQuestion] = useState(initialQuestion);
   const [quotaHint, setQuotaHint] = useState<string | null>(null);
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   useEffect(() => {
     onQuestionChange?.(question);
@@ -111,12 +109,28 @@ const AIInterpretation = ({
     setQuotaHint(null);
     try {
       if (guestMode) {
-        const result = await requestGuestInterpretationOnce({
-          spreadName,
-          labels,
-          cards,
-          question: question.trim() || undefined,
-        });
+        let result: Awaited<ReturnType<typeof requestGuestInterpretationOnce>> | null = null;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            result = await requestGuestInterpretationOnce({
+              spreadName,
+              labels,
+              cards,
+              question: question.trim() || undefined,
+            });
+            break;
+          } catch (err) {
+            const e = err as Error & { code?: string };
+            if (e.code === "AI_BUSY" && attempt === 0) {
+              await wait(1800);
+              continue;
+            }
+            throw err;
+          }
+        }
+        if (!result) {
+          throw new Error("Não foi possível concluir a interpretação agora.");
+        }
         setInterpretation(result.interpretation);
         onInterpretationReady?.();
         trackEvent("guest_interpretation_success", {
@@ -127,18 +141,34 @@ const AIInterpretation = ({
         onGuestConsumed?.();
         setQuotaHint(null);
       } else {
-        const result = await requestAIInterpretation(
-          {
-            spreadId,
-            spreadName,
-            labels,
-            cards,
-            question: question.trim() || undefined,
-            consultationId: consultationId as string,
-            replaceExisting: opts?.replaceExisting === true,
-          },
-          { session }
-        );
+        let result: Awaited<ReturnType<typeof requestAIInterpretation>> | null = null;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            result = await requestAIInterpretation(
+              {
+                spreadId,
+                spreadName,
+                labels,
+                cards,
+                question: question.trim() || undefined,
+                consultationId: consultationId as string,
+                replaceExisting: opts?.replaceExisting === true,
+              },
+              { session }
+            );
+            break;
+          } catch (err) {
+            const e = err as Error & { code?: string };
+            if (e.code === "AI_BUSY" && attempt === 0) {
+              await wait(1800);
+              continue;
+            }
+            throw err;
+          }
+        }
+        if (!result) {
+          throw new Error("Não foi possível concluir a interpretação agora.");
+        }
         setInterpretation(result.interpretation);
         onInterpretationReady?.();
         trackEvent("ai_interpretation_success", {
@@ -402,31 +432,6 @@ const AIInterpretation = ({
               <div className="font-body text-foreground/85 text-lg leading-relaxed whitespace-pre-line">
                 {interpretation}
               </div>
-              {!guestMode && !welcomeFreeConsult && (
-                <>
-                  <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
-                    Na mesma tiragem pode <strong className="text-foreground/90">gerar de novo</strong> sem custo
-                    extra; cada <strong className="text-foreground/90">nova tiragem</strong> inicia uma consulta nova
-                    na sua conta.
-                  </p>
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    disabled={isLoading}
-                    onClick={() => void handleInterpret({ replaceExisting: true })}
-                    className="mt-3 w-full font-display tracking-[0.12em] uppercase text-xs px-4 py-3 rounded-lg bg-primary/15 text-primary border border-primary/35 hover:bg-primary/25 transition-all disabled:opacity-50"
-                  >
-                    Gerar novamente (sem custo extra)
-                  </motion.button>
-                </>
-              )}
-              {!guestMode && welcomeFreeConsult && (
-                <p className="text-xs text-muted-foreground font-body leading-relaxed border-t border-border/60 pt-4">
-                  Esta foi a sua interpretação gratuita de boas-vindas nesta tiragem. Para ver outra leitura com IA,
-                  faça uma <strong className="text-foreground/90">nova tiragem</strong>.
-                </p>
-              )}
             </motion.div>
             {guestMode && (
               <motion.div
