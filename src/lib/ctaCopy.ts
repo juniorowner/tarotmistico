@@ -5,3 +5,5 @@ export const CTA_DISCOVER_AFTER_ALL_REVEALED = "DESCOBRIR MINHA RESPOSTA";
 /** Após a interpretação já gerada nesta sessão (evita repetir «desbloquear»). */
 export const CTA_VIEW_AI_READING = "Ver interpretação completa";
 export const CTA_CONTINUE_READING = "Continuar leitura";
+/** Após interpretação gerada: voltar ao seletor de tiragens (nova mesa). */
+export const CTA_NEW_READING = "Nova leitura";

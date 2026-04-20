@@ -37,7 +37,8 @@ const Index = () => {
     cards: DealtTarotCard[];
   } | null>(null);
   const [spreadSession, setSpreadSession] = useState<TarotInitialReading | null>(null);
-  const [hasEnteredReading, setHasEnteredReading] = useState(false);
+  /** Atalho Hero «catálogo completo»: monta tiragem sem ler sessionStorage (evita ficar preso na leitura anterior). */
+  const [catalogShortcutFresh, setCatalogShortcutFresh] = useState(false);
   const [readingKey, setReadingKey] = useState(0);
   const [avisosOpen, setAvisosOpen] = useState(false);
 
@@ -80,7 +81,9 @@ const Index = () => {
   };
 
   const goToReadingArea = (session: TarotInitialReading | null) => {
-    setHasEnteredReading(true);
+    if (session) {
+      setCatalogShortcutFresh(false);
+    }
     setSpreadSession(session);
     setReadingKey((k) => k + 1);
     setPhase("reading");
@@ -131,6 +134,7 @@ const Index = () => {
   /** Acesso direto ao seletor completo (Cruz Celta etc.), sem o funil. */
   const skipToCatalog = () => {
     trackEvent("conversion_skip_to_catalog");
+    setCatalogShortcutFresh(true);
     goToReadingArea(null);
   };
 
@@ -159,7 +163,7 @@ const Index = () => {
         {phase === "hero" && (
           <Hero
             onDiscover={handleDiscover}
-            onOpenFullCatalog={hasEnteredReading ? undefined : skipToCatalog}
+            onOpenFullCatalog={skipToCatalog}
           />
         )}
         {phase === "choose" && (
@@ -178,7 +182,11 @@ const Index = () => {
 
         {showReading && (
           <div id="leitura">
-            <TarotSpread key={readingKey} initialReading={spreadSession} />
+            <TarotSpread
+              key={readingKey}
+              initialReading={spreadSession}
+              ignorePersistedProgress={catalogShortcutFresh}
+            />
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
@@ -36,6 +36,8 @@ interface AIInterpretationProps {
   onEnsureConsultation?: () => Promise<string | null>;
   /** Chamado quando a interpretação fica disponível (guest ou conta). */
   onInterpretationReady?: () => void;
+  /** Mobile: quando o bloco principal (Comprar créditos / DESCOBRIR / Desbloquear / loading) entra no ecrã. */
+  onPrimaryActionVisibilityChange?: (visible: boolean) => void;
 }
 
 type ErrorFooter = "quota" | "included" | null;
@@ -54,6 +56,7 @@ const AIInterpretation = ({
   onGuestConsumed,
   onEnsureConsultation,
   onInterpretationReady,
+  onPrimaryActionVisibilityChange,
 }: AIInterpretationProps) => {
   const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
   const loggedInNoCredits = !guestMode && !!user && (aiQuota?.credits_balance ?? 0) <= 0;
@@ -64,7 +67,32 @@ const AIInterpretation = ({
   const [errorFooter, setErrorFooter] = useState<ErrorFooter>(null);
   const [question, setQuestion] = useState(initialQuestion);
   const [quotaHint, setQuotaHint] = useState<string | null>(null);
+  const primaryActionBlockRef = useRef<HTMLDivElement | null>(null);
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  useEffect(() => {
+    if (!onPrimaryActionVisibilityChange) return;
+    if (interpretation) {
+      onPrimaryActionVisibilityChange(false);
+      return;
+    }
+    const el = primaryActionBlockRef.current;
+    if (!el) {
+      onPrimaryActionVisibilityChange(false);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) onPrimaryActionVisibilityChange(entry.isIntersecting);
+      },
+      { root: null, threshold: [0, 0.1, 0.2], rootMargin: "0px 0px -12% 0px" }
+    );
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      onPrimaryActionVisibilityChange(false);
+    };
+  }, [onPrimaryActionVisibilityChange, interpretation, isLoading]);
 
   useEffect(() => {
     onQuestionChange?.(question);
@@ -319,68 +347,68 @@ const AIInterpretation = ({
         <p className="text-xs text-center font-body mb-2 px-2 text-[hsl(270_42%_72%)]">{consultCommitError}</p>
       )}
 
-      {!interpretation && !isLoading && guestMode && hasGuestOnceBeenConsumedLocally() && (
-        <div className="space-y-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-5 text-center">
-          <p className="font-display text-sm text-primary tracking-wide uppercase">Interpretação IA</p>
-          <p className="text-base md:text-lg text-foreground font-body font-medium leading-snug">
-            {GUEST_BLOCKED_TEASER_LINES[0]}
-          </p>
-          <p className="text-sm text-muted-foreground font-body leading-relaxed">
-            {GUEST_BLOCKED_TEASER_LINES[1]}
-          </p>
-          <button
-            type="button"
-            onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_BLOCKED)}
-            className="w-full font-display tracking-[0.08em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
-          >
-            {GUEST_POST_FIRST_CTA_BUTTON}
-          </button>
-        </div>
-      )}
-
-      {!interpretation && !isLoading && !(guestMode && hasGuestOnceBeenConsumedLocally()) && (
-        <div className="space-y-4">
-          <input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="O que você quer descobrir?"
-            className="w-full px-4 py-3 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground font-body text-lg focus:outline-none focus:border-primary/60 transition-colors"
-          />
-          {loggedInNoCredits ? (
-            <Link
-              to="/creditos"
-              className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold"
+      {!interpretation && (
+        <div ref={primaryActionBlockRef} className="w-full">
+          {isLoading ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center gap-4 py-8"
             >
-              <Sparkles className="w-4 h-4" />
-              Comprar créditos
-            </Link>
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <p className="font-display text-sm tracking-[0.2em] uppercase text-primary/70">
+                Consultando os astros...
+              </p>
+            </motion.div>
+          ) : guestMode && hasGuestOnceBeenConsumedLocally() ? (
+            <div className="space-y-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-5 text-center">
+              <p className="font-display text-sm text-primary tracking-wide uppercase">Interpretação IA</p>
+              <p className="text-base md:text-lg text-foreground font-body font-medium leading-snug">
+                {GUEST_BLOCKED_TEASER_LINES[0]}
+              </p>
+              <p className="text-sm text-muted-foreground font-body leading-relaxed">
+                {GUEST_BLOCKED_TEASER_LINES[1]}
+              </p>
+              <button
+                type="button"
+                onClick={() => openAuthDialog(GUEST_DEVICE_LIMIT_BLOCKED)}
+                className="w-full font-display tracking-[0.08em] uppercase text-sm px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all"
+              >
+                {GUEST_POST_FIRST_CTA_BUTTON}
+              </button>
+            </div>
           ) : (
-            <motion.button
-              whileHover={{ scale: authLoading ? 1 : 1.03 }}
-              whileTap={{ scale: authLoading ? 1 : 0.97 }}
-              onClick={() => void handleInterpret()}
-              disabled={authLoading || (!guestMode && (consultCommitLoading || !!consultCommitError))}
-              className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
-            >
-              <Sparkles className="w-4 h-4" />
-              {loggedInWithCredits ? "Desbloquear leitura (1 crédito)" : CTA_DISCOVER_AFTER_ALL_REVEALED}
-            </motion.button>
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="O que você quer descobrir?"
+                className="w-full px-4 py-3 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground font-body text-lg focus:outline-none focus:border-primary/60 transition-colors"
+              />
+              {loggedInNoCredits ? (
+                <Link
+                  to="/creditos"
+                  className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Comprar créditos
+                </Link>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: authLoading ? 1 : 1.03 }}
+                  whileTap={{ scale: authLoading ? 1 : 0.97 }}
+                  onClick={() => void handleInterpret()}
+                  disabled={authLoading || (!guestMode && (consultCommitLoading || !!consultCommitError))}
+                  className="w-full font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-secondary text-secondary-foreground border border-primary/30 hover:border-primary/60 hover:bg-secondary/80 transition-all flex items-center justify-center gap-2 glow-gold disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {loggedInWithCredits ? "Desbloquear leitura (1 crédito)" : CTA_DISCOVER_AFTER_ALL_REVEALED}
+                </motion.button>
+              )}
+            </div>
           )}
         </div>
-      )}
-
-      {isLoading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center gap-4 py-8"
-        >
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          <p className="font-display text-sm tracking-[0.2em] uppercase text-primary/70">
-            Consultando os astros...
-          </p>
-        </motion.div>
       )}
 
       <AnimatePresence>

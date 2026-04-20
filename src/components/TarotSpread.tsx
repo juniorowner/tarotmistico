@@ -8,8 +8,8 @@ import { saveDiaryEntry } from "@/lib/diary";
 import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
 import {
-  CTA_CONTINUE_READING,
   CTA_DISCOVER_AFTER_ALL_REVEALED,
+  CTA_NEW_READING,
   CTA_VIEW_AI_READING,
 } from "@/lib/ctaCopy";
 import {
@@ -175,10 +175,13 @@ export interface TarotInitialReading {
 interface TarotSpreadProps {
   /** Quando definido na montagem, inicia a tiragem com cartas já sorteadas (ex.: após pré-visualização). */
   initialReading?: TarotInitialReading | null;
+  /** Não restaurar progresso em sessionStorage (ex.: atalho «catálogo completo» na home). */
+  ignorePersistedProgress?: boolean;
 }
 
-const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
-  const persistedProgress = initialReading ? null : readPersistedReadingProgress();
+const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }: TarotSpreadProps) => {
+  const persistedProgress =
+    initialReading || ignorePersistedProgress ? null : readPersistedReadingProgress();
   const persistedSpread =
     persistedProgress && persistedProgress.hasStarted
       ? spreadTypes.find((s) => s.id === persistedProgress.spreadId) ?? null
@@ -228,6 +231,11 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   /** Só nesta sessão: evita «Desbloquear» após a IA já ter corrido (utilizador com sessão). */
   const [aiInterpretationReady, setAiInterpretationReady] = useState(false);
   const commitInFlightRef = useRef<Promise<string | null> | null>(null);
+  /** Mobile: CTA fixo some quando o bloco principal da IA (Comprar / DESCOBRIR / etc.) está visível. */
+  const [iaPrimaryActionInView, setIaPrimaryActionInView] = useState(false);
+  const handleIaPrimaryVisibility = useCallback((visible: boolean) => {
+    setIaPrimaryActionInView(visible);
+  }, []);
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
   const postRevealScrollDoneRef = useRef(false);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -236,6 +244,17 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
   useEffect(() => {
     revealedRef.current = revealed;
   }, [revealed]);
+
+  useEffect(() => {
+    if (!allRevealed) setIaPrimaryActionInView(false);
+  }, [allRevealed]);
+
+  /** Atalho «catálogo completo»: evita que uma leitura antiga em sessionStorage volte num refresh sem atalho. */
+  useEffect(() => {
+    if (ignorePersistedProgress && !initialReading) {
+      clearPersistedReadingProgress();
+    }
+  }, [ignorePersistedProgress, initialReading]);
 
   /** Só quando já temos quota carregada; se ainda for null, o servidor valida no registo da consulta. */
   const quotaExhausted =
@@ -779,6 +798,36 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
             </Dialog>
 
             {allRevealed && selectedSpread && (
+              <div className="mb-10 flex max-w-lg flex-col gap-3 px-2 sm:mx-auto sm:flex-row sm:items-stretch sm:justify-center">
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35 }}
+                  onClick={scrollToAiInterpretation}
+                  className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all sm:flex-1"
+                >
+                  {CTA_DISCOVER_AFTER_ALL_REVEALED}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.05 }}
+                  onClick={() => {
+                    trackEvent("new_reading_clicked", {
+                      after_interpretation: aiInterpretationReady,
+                    });
+                    resetAll({ announceReplace: true });
+                  }}
+                  className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all sm:flex-1 sm:max-w-[min(100%,14rem)]"
+                >
+                  {CTA_NEW_READING}
+                </motion.button>
+              </div>
+            )}
+
+            {allRevealed && selectedSpread && (
               <AIInterpretation
                 spreadId={selectedSpread.id}
                 spreadName={selectedSpread.name}
@@ -792,6 +841,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
                 onQuestionChange={setSavedQuestion}
                 onEnsureConsultation={ensureConsultation}
                 onInterpretationReady={() => setAiInterpretationReady(true)}
+                onPrimaryActionVisibilityChange={isNarrow ? handleIaPrimaryVisibility : undefined}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");
                   const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split(/\n+/).filter(Boolean);
@@ -800,38 +850,26 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
               />
             )}
 
-            {allRevealed && aiInterpretationReady && (
-              <div className="flex flex-wrap justify-center gap-4 mt-8">
+            {allRevealed && selectedSpread && user && aiInterpretationReady && (
+              <div className="mt-8 flex flex-wrap justify-center gap-4">
                 <motion.button
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={saveReading}
-                  className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg bg-primary text-primary-foreground glow-gold hover:brightness-110 transition-all flex items-center gap-2"
+                  className="flex items-center gap-2 rounded-lg bg-primary px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-primary-foreground glow-gold transition-all hover:brightness-110"
                 >
-                  <Save className="w-4 h-4" />
+                  <Save className="h-4 w-4" />
                   Salvar no Diário
                 </motion.button>
-                {!(!user && hasGuestOnceBeenConsumedLocally()) && (
-                  <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => resetAll({ announceReplace: true })}
-                    className="font-display tracking-[0.15em] uppercase text-sm px-8 py-4 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
-                  >
-                    {CTA_CONTINUE_READING}
-                  </motion.button>
-                )}
               </div>
             )}
           </>
         )}
       </div>
 
-      {isNarrow && hasStarted && (
+      {isNarrow && hasStarted && (!allRevealed || !iaPrimaryActionInView) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
           <div className="pointer-events-auto mx-auto max-w-lg">
             {!allRevealed ? (
