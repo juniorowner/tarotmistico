@@ -215,6 +215,19 @@ serve(async (req) => {
       );
     }
 
+    // Regra de produto atual: conta logada não tem consulta grátis.
+    // Só gera IA para consultas pagas com crédito debitado no commit.
+    if (!consult.used_credit) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Esta consulta não foi debitada em créditos. Inicie uma nova tiragem e conclua a consulta com crédito para continuar.",
+          code: "QUOTA_EXCEEDED",
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (replaceExisting && consult.welcome_free_ai) {
       return new Response(
         JSON.stringify({
