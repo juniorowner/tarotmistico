@@ -45,6 +45,12 @@ function utcTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isAiBusyMessage(msg: string): boolean {
+  return /(currently\s+experiencing\s+high\s+demand|spikes\s+in\s+demand|resource\s+exhausted|rate\s+limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
+    msg
+  );
+}
+
 /** Junta todo o texto devolvido pelo Gemini (vários `content.parts`). */
 function extractGeminiInterpretationText(data: Record<string, unknown>): string {
   const candidates = data.candidates as
@@ -216,7 +222,20 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
       );
       const data = await response.json();
       if (!response.ok) {
-        return new Response(JSON.stringify({ error: data?.error?.message || "AI error", code: "AI_FAILED" }), {
+        const msg = data?.error?.message || "AI error";
+        if (isAiBusyMessage(msg) || response.status === 429 || response.status === 503) {
+          return new Response(
+            JSON.stringify({
+              error: "A IA está com alta procura neste momento. Aguarde alguns segundos e tente novamente.",
+              code: "AI_BUSY",
+            }),
+            {
+              status: 503,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        return new Response(JSON.stringify({ error: msg, code: "AI_FAILED" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

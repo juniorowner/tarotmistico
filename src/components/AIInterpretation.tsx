@@ -169,6 +169,14 @@ const AIInterpretation = ({
           );
           return;
         }
+        if (e.code === "AI_BUSY") {
+          trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "ai_busy" });
+          setError(
+            e.message ||
+              "A IA está com alta procura agora. Aguarde alguns segundos e tente novamente."
+          );
+          return;
+        }
         if (e.code === "GUEST_IP_DAILY_LIMIT") {
           trackEvent("guest_interpretation_failed", { spread_id: spreadId, reason: "ip_daily_limit" });
           setError(

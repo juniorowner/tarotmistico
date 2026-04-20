@@ -69,6 +69,16 @@ function looksTruncatedPtBr(text: string): boolean {
   return /\b(com|com\s+o|com\s+a|com\s+os|com\s+as|de|do|da|dos|das|no|na|nos|nas|em|por|para|que)\s*$/i.test(t);
 }
 
+function isAiBusyMessage(msg: string): boolean {
+  return /(currently\s+experiencing\s+high\s+demand|spikes\s+in\s+demand|resource\s+exhausted|rate\s+limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
+    msg
+  );
+}
+
+function aiBusyErrorMessage(): string {
+  return "A IA está com alta procura neste momento. Tente novamente em instantes; se a consulta já foi registada, o crédito/vaga grátis é reposto em falhas.";
+}
+
 type SupabaseAdmin = ReturnType<typeof createClient>;
 
 /** Devolve crédito ou slot grátis se a IA falhar depois da consulta registada. Idempotente. */
@@ -398,7 +408,12 @@ ${cardsDescription}
           const msg =
             data?.error?.message ||
             (typeof data?.error === "string" ? data.error : "Gemini API error");
-          throw new Error(msg);
+          const err = new Error(msg) as Error & { code?: string; status?: number };
+          if (isAiBusyMessage(msg) || response.status === 429 || response.status === 503) {
+            err.code = "AI_BUSY";
+            err.status = 503;
+          }
+          throw err;
         }
 
         aiInterpretation = extractGeminiInterpretationText(data as Record<string, unknown>);
@@ -542,8 +557,20 @@ ${cardsDescription}
       throw runErr;
     }
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
+    const err = error as Error & { code?: string; status?: number };
+    const message = err?.message || String(error);
     console.error("Error:", error);
+    if (err?.code === "AI_BUSY" || isAiBusyMessage(message)) {
+      return new Response(
+        JSON.stringify({
+          error: aiBusyErrorMessage(),
+          code: "AI_BUSY",
+          hint:
+            "Tente novamente em 10-30 segundos. Se a consulta já estava registada, o crédito ou vaga grátis foi reposto.",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     return new Response(
       JSON.stringify({
         error: message || "Internal server error",
@@ -551,7 +578,7 @@ ${cardsDescription}
         hint:
           "Se a consulta já estava registada, o crédito ou a vaga grátis podem ter sido devolvidos — veja «Movimentos de créditos» na página de créditos.",
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: err?.status ?? 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

@@ -37,6 +37,7 @@ const Index = () => {
     cards: DealtTarotCard[];
   } | null>(null);
   const [spreadSession, setSpreadSession] = useState<TarotInitialReading | null>(null);
+  const [hasEnteredReading, setHasEnteredReading] = useState(false);
   const [readingKey, setReadingKey] = useState(0);
   const [avisosOpen, setAvisosOpen] = useState(false);
 
@@ -79,6 +80,7 @@ const Index = () => {
   };
 
   const goToReadingArea = (session: TarotInitialReading | null) => {
+    setHasEnteredReading(true);
     setSpreadSession(session);
     setReadingKey((k) => k + 1);
     setPhase("reading");
@@ -154,7 +156,12 @@ const Index = () => {
           <UserMenu />
         </SiteNavBar>
 
-        {phase === "hero" && <Hero onDiscover={handleDiscover} onOpenFullCatalog={skipToCatalog} />}
+        {phase === "hero" && (
+          <Hero
+            onDiscover={handleDiscover}
+            onOpenFullCatalog={hasEnteredReading ? undefined : skipToCatalog}
+          />
+        )}
         {phase === "choose" && (
           <ConversionChooseSpread
             question={question}
