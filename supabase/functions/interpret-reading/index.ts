@@ -1,4 +1,4 @@
-// Supabase Edge Function — interpretação de Tarot com IA (Gemini / OpenAI / Groq)
+// Supabase Edge Function — interpretação de Tarot com IA (OpenAI / Groq)
 // Quota/crédito: debitados ao registar a consulta (commit-reading-consult); aqui só gera texto e liga ai_readings.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -33,44 +33,8 @@ interface ReadingRequest {
   replaceExisting?: boolean;
 }
 
-/**
- * Junta todo o texto devolvido pelo Gemini (vários `content.parts`).
- * Não filtrar por `thought`: no 2.5 parte da resposta útil pode vir em parts com flags de raciocínio,
- * o que cortava a leitura a meio (ex.: "…Copas invert").
- */
-function extractGeminiInterpretationText(data: Record<string, unknown>): string {
-  const candidates = data.candidates as
-    | Array<{ content?: { parts?: Array<Record<string, unknown> | null> } }>
-    | undefined;
-
-  if (!Array.isArray(candidates)) return "";
-
-  for (const cand of candidates) {
-    const parts = cand?.content?.parts;
-    if (!Array.isArray(parts) || parts.length === 0) continue;
-
-    const chunks: string[] = [];
-    for (const p of parts) {
-      if (p == null || typeof p !== "object") continue;
-      const t = (p as { text?: unknown }).text;
-      if (typeof t === "string" && t.length > 0) chunks.push(t);
-    }
-    const joined = chunks.join("");
-    if (joined.trim().length > 0) return joined;
-  }
-
-  return "";
-}
-
-/** Cortes típicos a meio de frase (PT-BR) ou respostas muito curtas. */
-function looksTruncatedPtBr(text: string): boolean {
-  const t = text.trim();
-  if (t.length < 80) return true;
-  return /\b(com|com\s+o|com\s+a|com\s+os|com\s+as|de|do|da|dos|das|no|na|nos|nas|em|por|para|que)\s*$/i.test(t);
-}
-
 function isAiBusyMessage(msg: string): boolean {
-  return /(currently\s+experiencing\s+high\s+demand|spikes\s+in\s+demand|resource\s+exhausted|rate\s+limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
+  return /(model\s+is\s+curr\w*\s+exper\w*\s+high|currently\s+exper\w*\s+high|high\s+demand|spikes\s+in\s+demand|resource\s+exhausted|rate\s+limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
     msg
   );
 }
@@ -314,18 +278,12 @@ serve(async (req) => {
       );
     }
 
+    const aiProvider = Deno.env.get("AI_PROVIDER") || "openai";
     const apiKey =
-      Deno.env.get("AI_API_KEY") ?? Deno.env.get("GEMINI_API_KEY") ?? "";
-    const aiProvider = Deno.env.get("AI_PROVIDER") || "gemini";
-    // gemini-1.5-pro deixou de estar disponível no v1beta para muitas chaves; override: secret GEMINI_MODEL
-    const geminiModel = (Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash").replace(
-      /^models\//,
-      ""
-    );
-    const geminiMaxOut = Math.min(
-      8192,
-      Math.max(512, parseInt(Deno.env.get("GEMINI_MAX_OUTPUT_TOKENS") ?? "2048", 10) || 2048)
-    );
+      Deno.env.get("AI_API_KEY") ??
+      Deno.env.get("OPENAI_API_KEY") ??
+      "";
+    const openaiModel = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
 
     try {
     if (!apiKey) {
@@ -371,73 +329,7 @@ ${cardsDescription}
     let aiInterpretation = "";
     let modelUsed = "";
 
-    if (aiProvider === "gemini") {
-      let maxOut = geminiMaxOut;
-      let lastFinish = "";
-
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const generationConfig: Record<string, unknown> = {
-          temperature: 0.88,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: maxOut,
-        };
-        // Só Gemini 2.5+ expõe thinking; desligar evita cortar a resposta visível quando o orçamento vai todo para o raciocínio interno.
-        if (/gemini[^a-z0-9]*2[^a-z0-9]*5|2\.5-flash|2\.5-pro/i.test(geminiModel)) {
-          generationConfig.thinkingConfig = { thinkingBudget: 0 };
-        }
-
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-            geminiModel
-          )}:generateContent?key=${encodeURIComponent(apiKey)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig,
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error("Gemini API error:", data);
-          const msg =
-            data?.error?.message ||
-            (typeof data?.error === "string" ? data.error : "Gemini API error");
-          const err = new Error(msg) as Error & { code?: string; status?: number };
-          if (isAiBusyMessage(msg) || response.status === 429 || response.status === 503) {
-            err.code = "AI_BUSY";
-            err.status = 503;
-          }
-          throw err;
-        }
-
-        aiInterpretation = extractGeminiInterpretationText(data as Record<string, unknown>);
-        lastFinish = (data as { candidates?: Array<{ finishReason?: string }> }).candidates?.[0]?.finishReason ?? "";
-
-        const truncated =
-          lastFinish === "MAX_TOKENS" ||
-          (aiInterpretation.length > 0 && looksTruncatedPtBr(aiInterpretation));
-
-        if (!aiInterpretation) break;
-        if (!truncated) break;
-        if (attempt === 0) {
-          maxOut = Math.min(8192, Math.max(maxOut + 512, maxOut * 2));
-          console.warn("interpret-reading: resposta truncada; nova tentativa com maxOutputTokens=", maxOut);
-        }
-      }
-
-      if (lastFinish === "MAX_TOKENS" || looksTruncatedPtBr(aiInterpretation)) {
-        throw new Error(
-          "A resposta da IA veio incompleta. Tente novamente; o seu crédito ou vaga grátis foi reposto se já tivesse sido debitado."
-        );
-      }
-      modelUsed = geminiModel;
-    } else if (aiProvider === "openai") {
+    if (aiProvider === "openai") {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -445,7 +337,7 @@ ${cardsDescription}
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: openaiModel,
           messages: [
             {
               role: "system",
@@ -462,11 +354,17 @@ ${cardsDescription}
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error?.message || "OpenAI API error");
+        const msg = data?.error?.message || "OpenAI API error";
+        const err = new Error(msg) as Error & { code?: string; status?: number };
+        if (isAiBusyMessage(msg) || response.status === 429 || response.status === 503) {
+          err.code = "AI_BUSY";
+          err.status = 503;
+        }
+        throw err;
       }
 
       aiInterpretation = data.choices[0]?.message?.content || "";
-      modelUsed = "gpt-3.5-turbo";
+      modelUsed = openaiModel;
     } else if (aiProvider === "groq") {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -498,7 +396,9 @@ ${cardsDescription}
       aiInterpretation = data.choices[0]?.message?.content || "";
       modelUsed = "llama-3.1-70b";
     } else {
-      throw new Error(`Unknown AI_PROVIDER: ${aiProvider}`);
+      throw new Error(
+        `AI_PROVIDER inválido: ${aiProvider}. Use "openai" (ou "groq" opcional).`
+      );
     }
 
     if (!aiInterpretation) {

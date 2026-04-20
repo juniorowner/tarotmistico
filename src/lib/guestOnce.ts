@@ -92,6 +92,12 @@ export function getGuestDeviceFingerprint(): string {
   ].join("|");
 }
 
+function isAiBusyLikeMessage(input: string): boolean {
+  return /(model\s+is\s+curr\w*\s+exper\w*\s+high|currently\s+exper\w*\s+high|high\s+demand|spikes?\s+in\s+demand|resource\s+exhausted|rate\s*limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
+    input
+  );
+}
+
 export async function requestGuestInterpretationOnce(input: {
   spreadName: string;
   labels: string[];
@@ -130,8 +136,11 @@ export async function requestGuestInterpretationOnce(input: {
     typeof (data as { error?: unknown }).error === "string"
   ) {
     const r = data as { error: string; code?: string };
-    const err = new Error(r.error);
-    (err as Error & { code?: string }).code = r.code;
+    const aiBusy = isAiBusyLikeMessage(r.error);
+    const err = new Error(
+      aiBusy ? "A IA está com alta procura neste momento. Tente novamente em alguns segundos." : r.error
+    );
+    (err as Error & { code?: string }).code = aiBusy ? "AI_BUSY" : r.code;
     throw err;
   }
 

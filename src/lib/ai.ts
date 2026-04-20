@@ -29,6 +29,12 @@ export interface InterpretationResponse {
   used_credit?: boolean;
 }
 
+function isAiBusyLikeMessage(input: string): boolean {
+  return /(model\s+is\s+curr\w*\s+exper\w*\s+high|currently\s+exper\w*\s+high|high\s+demand|spikes?\s+in\s+demand|resource\s+exhausted|rate\s*limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
+    input
+  );
+}
+
 interface ApiCard {
   cardId: number;
   cardName: string;
@@ -94,7 +100,7 @@ export async function parseFunctionsHttpError(
         };
       }
       return {
-        message: `A função devolveu erro ${status} sem mensagem. Confirme se \`interpret-reading\` está deployada e com secrets (ex.: GEMINI_API_KEY).`,
+        message: `A função devolveu erro ${status} sem mensagem. Confirme se \`interpret-reading\` está deployada e com secrets (ex.: OPENAI_API_KEY).`,
       };
     }
     try {
@@ -108,13 +114,18 @@ export async function parseFunctionsHttpError(
       const raw = payload?.error ?? payload?.message;
       if (raw) {
         const invalidJwt = /invalid\s+jwt/i.test(String(raw));
+        const aiBusy = isAiBusyLikeMessage(String(raw));
         const msg = invalidJwt
           ? "Sessão inválida ou expirada (JWT). Saia, entre de novo e tente outra vez. Se mudou o projeto Supabase no site, limpe dados do site ou use outra janela anónima."
+          : aiBusy
+            ? "A IA está com alta procura neste momento. Tente novamente em alguns segundos."
           : raw;
         return {
           message: msg,
           code: invalidJwt
             ? "AUTH_INVALID"
+            : aiBusy
+              ? "AI_BUSY"
             : typeof payload.code === "string"
               ? payload.code
               : undefined,
@@ -253,8 +264,11 @@ export async function requestAIInterpretation(
     typeof (result as { error?: unknown }).error === "string"
   ) {
     const r = result as { error: string; code?: string };
-    const err = new Error(r.error);
-    (err as Error & { code?: string }).code = r.code;
+    const aiBusy = isAiBusyLikeMessage(r.error);
+    const err = new Error(
+      aiBusy ? "A IA está com alta procura neste momento. Tente novamente em alguns segundos." : r.error
+    );
+    (err as Error & { code?: string }).code = aiBusy ? "AI_BUSY" : r.code;
     throw err;
   }
 

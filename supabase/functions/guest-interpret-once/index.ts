@@ -46,46 +46,9 @@ function utcTodayDateString(): string {
 }
 
 function isAiBusyMessage(msg: string): boolean {
-  return /(currently\s+experiencing\s+high\s+demand|spikes\s+in\s+demand|resource\s+exhausted|rate\s+limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
+  return /(model\s+is\s+curr\w*\s+exper\w*\s+high|currently\s+exper\w*\s+high|high\s+demand|spikes\s+in\s+demand|resource\s+exhausted|rate\s+limit|temporar(?:ily|iamente)\s+unavailable|overloaded)/i.test(
     msg
   );
-}
-
-/** Junta todo o texto devolvido pelo Gemini (vários `content.parts`). */
-function extractGeminiInterpretationText(data: Record<string, unknown>): string {
-  const candidates = data.candidates as
-    | Array<{ content?: { parts?: Array<Record<string, unknown> | null> } }>
-    | undefined;
-
-  if (!Array.isArray(candidates)) return "";
-
-  for (const cand of candidates) {
-    const parts = cand?.content?.parts;
-    if (!Array.isArray(parts) || parts.length === 0) continue;
-
-    const chunks: string[] = [];
-    for (const p of parts) {
-      if (p == null || typeof p !== "object") continue;
-      const t = (p as { text?: unknown }).text;
-      if (typeof t === "string" && t.length > 0) chunks.push(t);
-    }
-    const joined = chunks.join("");
-    if (joined.trim().length > 0) return joined;
-  }
-
-  return "";
-}
-
-function getGeminiFinishReason(data: Record<string, unknown>): string {
-  const c = (data.candidates as Array<{ finishReason?: string }> | undefined)?.[0];
-  return typeof c?.finishReason === "string" ? c.finishReason : "";
-}
-
-/** Cortes típicos a meio de frase (PT-BR) ou respostas muito curtas. */
-function looksTruncatedPtBr(text: string): boolean {
-  const t = text.trim();
-  if (t.length < 80) return true;
-  return /\b(com|com\s+o|com\s+a|com\s+os|com\s+as|de|do|da|dos|das|no|na|nos|nas|em|por|para|que)\s*$/i.test(t);
 }
 
 serve(async (req) => {
@@ -100,7 +63,11 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const apiKey = Deno.env.get("AI_API_KEY") ?? Deno.env.get("GEMINI_API_KEY") ?? "";
+    const aiProvider = Deno.env.get("AI_PROVIDER") ?? "openai";
+    const apiKey =
+      Deno.env.get("AI_API_KEY") ??
+      Deno.env.get("OPENAI_API_KEY") ??
+      "";
     if (!supabaseUrl || !serviceKey || !apiKey) {
       return new Response(JSON.stringify({ error: "Server misconfigured" }), {
         status: 500,
@@ -189,37 +156,31 @@ ${cardsDescription}
 Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto no final de que não substitui orientação profissional.
 **Importante:** termine sempre com uma frase completa e pontuação final (. ! ou ?).`;
 
-    const model = (Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash").replace(/^models\//, "");
-    let geminiMaxOut = Math.min(
-      8192,
-      Math.max(1024, parseInt(Deno.env.get("GEMINI_MAX_OUTPUT_TOKENS") ?? "3072", 10) || 3072)
-    );
+    const openaiModel = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
 
     let interpretation = "";
-    let lastFinish = "";
 
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const generationConfig: Record<string, unknown> = {
-        temperature: 0.88,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: geminiMaxOut,
-      };
-      if (/gemini[^a-z0-9]*2[^a-z0-9]*5|2\.5-flash|2\.5-pro/i.test(model)) {
-        generationConfig.thinkingConfig = { thinkingBudget: 0 };
-      }
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig,
-          }),
-        }
-      );
+    if (aiProvider === "openai") {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: openaiModel,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Você é um tarólogo experiente. Escreva em português do Brasil com clareza e acolhimento. Inclua no final um aviso curto de que não substitui orientação profissional.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.88,
+          max_tokens: 900,
+        }),
+      });
       const data = await response.json();
       if (!response.ok) {
         const msg = data?.error?.message || "AI error";
@@ -240,20 +201,15 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      interpretation = extractGeminiInterpretationText(data as Record<string, unknown>);
-      lastFinish = getGeminiFinishReason(data as Record<string, unknown>);
-
-      const truncated =
-        lastFinish === "MAX_TOKENS" ||
-        (interpretation.length > 0 && looksTruncatedPtBr(interpretation));
-
-      if (!interpretation) break;
-      if (!truncated) break;
-      if (attempt === 0) {
-        geminiMaxOut = Math.min(8192, Math.max(geminiMaxOut + 512, geminiMaxOut * 2));
-        console.warn("guest-interpret-once: resposta truncada; nova tentativa com maxOutputTokens=", geminiMaxOut);
-      }
+      interpretation = data?.choices?.[0]?.message?.content || "";
+    } else {
+      return new Response(
+        JSON.stringify({
+          error: `AI_PROVIDER inválido: ${aiProvider}. Use "openai".`,
+          code: "AI_PROVIDER_INVALID",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (!interpretation) {
@@ -262,17 +218,6 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (lastFinish === "MAX_TOKENS" || looksTruncatedPtBr(interpretation)) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "A leitura veio incompleta. Aguarde um instante e tente novamente. A sua consulta grátis neste dispositivo ainda não foi contabilizada.",
-          code: "AI_TRUNCATED",
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const cardsJson = JSON.parse(JSON.stringify(cards)) as unknown[];
 
     const { data: lockRow, error: lockErr } = await admin
@@ -316,7 +261,7 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
       question: question || null,
       cards: cardsJson,
       interpretation,
-      model_used: model,
+      model_used: openaiModel,
     });
     if (guestLogErr) {
       console.error("guest_questions insert error:", guestLogErr);
@@ -352,7 +297,11 @@ Responda em português do Brasil, 3-4 parágrafos, sem tópicos, com aviso curto
     }
 
     return new Response(
-      JSON.stringify({ interpretation, model, guest_consumed: true }),
+      JSON.stringify({
+        interpretation,
+        model: openaiModel,
+        guest_consumed: true,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
