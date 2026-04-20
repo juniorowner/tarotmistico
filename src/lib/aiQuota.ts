@@ -8,11 +8,11 @@ import { getValidAccessTokenForFunctions } from "@/lib/ai";
 
 /** Resposta da Edge Function `ai-quota` */
 export interface AiQuotaResponse {
-  /** Máximo de consultas completas grátis por conta (vitalício). */
+  /** Máximo de consultas completas grátis por conta (atualmente 0). */
   free_per_account: number;
   /** Consultas completas já registadas (não revogadas). */
   consults_completed: number;
-  /** Vagas grátis restantes na conta (0 ou 1). O nome do campo mantém compatibilidade com o backend. */
+  /** Vagas grátis restantes na conta (atualmente 0). Nome mantido por compatibilidade. */
   free_remaining_today: number;
   credits_balance: number;
 }

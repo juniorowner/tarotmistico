@@ -220,7 +220,7 @@ const AIInterpretation = ({
         trackEvent("ai_interpretation_quota_exceeded");
         setError(
           e.message ||
-            "Sua leitura gratuita nesta conta já foi utilizada. Pode ver opções para novas leituras completas na página de pacotes."
+            "Você não tem créditos suficientes agora. Pode ver opções para novas leituras completas na página de pacotes."
         );
         setErrorFooter("quota");
         return;
@@ -269,11 +269,10 @@ const AIInterpretation = ({
         <p className="text-center text-sm md:text-base text-muted-foreground font-body mb-5 max-w-md mx-auto px-2 leading-relaxed">
           {GUEST_AI_PRE_INTERP_HINT}
         </p>
-      ) : !guestMode && aiQuota && aiQuota.free_remaining_today > 0 ? (
+      ) : !guestMode && aiQuota && aiQuota.credits_balance > 0 ? (
         <p className="text-sm text-center text-muted-foreground font-body mb-5 px-2 leading-relaxed max-w-md mx-auto">
           <span className="text-primary">✨</span>{" "}
-          <strong className="text-foreground/95">Sua primeira interpretação completa com IA nesta conta é gratuita.</strong>{" "}
-          Aproveite esta leitura com calma.
+          Cada interpretação completa usa <strong className="text-foreground/95">1 crédito</strong> na conta.
         </p>
       ) : null}
 

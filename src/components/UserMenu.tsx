@@ -48,12 +48,8 @@ export function UserMenu() {
 
   const n = credits ?? 0;
 
-  /** Evita stress de “pagar” enquanto ainda há leitura completa grátis e sem saldo pago. */
-  const showCreditsNav =
-    !isLoading &&
-    (aiQuota == null ||
-      aiQuota.free_remaining_today < 1 ||
-      aiQuota.credits_balance > 0);
+  /** Após login, leituras completas usam créditos: manter acesso sempre visível. */
+  const showCreditsNav = !isLoading;
 
   const handleSaveDisplayName = async () => {
     setSavingName(true);

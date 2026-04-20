@@ -331,7 +331,7 @@ const Creditos = () => {
     <>
       <SEO
         title="Créditos IA | Tarot Místico"
-        description="Compre créditos para novas interpretações por IA após a consulta grátis da sua conta."
+        description="Compre créditos para interpretações completas por IA."
         path="/creditos"
       />
       <div className="min-h-screen bg-background text-foreground">
@@ -352,26 +352,19 @@ const Creditos = () => {
             <p className="text-muted-foreground font-body max-w-xl mx-auto text-sm leading-relaxed">
               {!user ? (
                 <>
-                  <span className="text-primary">✨</span>{" "}
-                  <strong className="text-foreground">Sua primeira interpretação completa é gratuita.</strong> Depois, você
-                  pode continuar com créditos — cada nova leitura completa usa 1 crédito.
+                  <span className="text-primary">✨</span> Cada leitura completa com IA usa{" "}
+                  <strong className="text-foreground">1 crédito</strong>.
                 </>
               ) : freeRem == null ? (
                 <>
                   <span className="text-primary">✨</span> A carregar informações da sua conta…
                 </>
-              ) : freeRem >= 1 ? (
-                <>
-                  <span className="text-primary">✨</span>{" "}
-                  <strong className="text-foreground">Sua primeira interpretação completa é gratuita.</strong> Depois, você
-                  pode continuar com créditos — cada nova leitura completa usa 1 crédito.
-                </>
               ) : (
                 <>
                   <span className="text-primary">✨</span>{" "}
-                  <strong className="text-foreground">A consulta grátis da sua conta já foi utilizada.</strong> Cada nova
-                  leitura completa com interpretação por IA usa <strong className="text-foreground">1 crédito</strong>.
-                  Escolha um pacote abaixo quando quiser continuar.
+                  Cada nova leitura completa com interpretação por IA usa{" "}
+                  <strong className="text-foreground">1 crédito</strong>. Escolha um pacote abaixo quando quiser
+                  continuar.
                 </>
               )}
             </p>
@@ -384,10 +377,8 @@ const Creditos = () => {
                 <span className="text-muted-foreground">
                   {freeRem == null ? (
                     "A carregar…"
-                  ) : freeRem >= 1 ? (
-                    "Primeira leitura completa ainda incluída"
                   ) : (
-                    "Leitura gratuita da conta já utilizada"
+                    "Leituras completas disponíveis com créditos"
                   )}
                   {completed != null && completed > 0 && (
                     <span className="text-muted-foreground/80">

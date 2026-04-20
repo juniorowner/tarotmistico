@@ -2,8 +2,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-/** Uma consulta com tiragem completa grátis por conta (vitalícia); depois só com crédito. */
-const FREE_CONSULTS_PER_ACCOUNT_LIFETIME = 1;
+/** Sem consulta grátis por conta logada: após login, toda consulta completa usa crédito. */
+const FREE_CONSULTS_PER_ACCOUNT_LIFETIME = 0;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,7 +119,6 @@ serve(async (req) => {
       console.error("count reading_consults:", countErr);
     }
 
-    const n = usedBefore ?? 0;
     let usedCredit = false;
     const welcomeFreeAi = false;
 
@@ -139,40 +138,38 @@ serve(async (req) => {
       );
     }
 
-    if (n >= FREE_CONSULTS_PER_ACCOUNT_LIFETIME) {
-      if (profileBefore.credits < 1) {
-        return new Response(
-          JSON.stringify({
-            error:
-              "✨ Há mais nessa leitura...\n\nDesbloqueie a interpretação completa e descubra todos os detalhes.",
-            code: "QUOTA_EXCEEDED",
-            free_per_account: FREE_CONSULTS_PER_ACCOUNT_LIFETIME,
-            consults_completed: n,
-            credits: profileBefore.credits ?? 0,
-          }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { data: updated, error: decErr } = await admin
-        .from("profiles")
-        .update({ credits: profileBefore.credits - 1 })
-        .eq("id", user.id)
-        .eq("credits", profileBefore.credits)
-        .select("credits")
-        .single();
-
-      if (decErr || !updated) {
-        return new Response(
-          JSON.stringify({
-            error: "Não foi possível usar créditos. Tente novamente.",
-            code: "CREDIT_UPDATE_FAILED",
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      usedCredit = true;
+    if (profileBefore.credits < 1) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "✨ Há mais nessa leitura...\n\nDesbloqueie a interpretação completa e descubra todos os detalhes.",
+          code: "QUOTA_EXCEEDED",
+          free_per_account: FREE_CONSULTS_PER_ACCOUNT_LIFETIME,
+          consults_completed: usedBefore ?? 0,
+          credits: profileBefore.credits ?? 0,
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    const { data: updated, error: decErr } = await admin
+      .from("profiles")
+      .update({ credits: profileBefore.credits - 1 })
+      .eq("id", user.id)
+      .eq("credits", profileBefore.credits)
+      .select("credits")
+      .single();
+
+    if (decErr || !updated) {
+      return new Response(
+        JSON.stringify({
+          error: "Não foi possível usar créditos. Tente novamente.",
+          code: "CREDIT_UPDATE_FAILED",
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    usedCredit = true;
 
     let row: { id: string } | null = null;
     const { data: inserted, error: insErr } = await admin
@@ -200,6 +197,22 @@ serve(async (req) => {
         .eq("dedupe_key", dedupeKey)
         .maybeSingle();
       if (raced) {
+        // Se esta tentativa já debitou crédito e perdeu corrida para um registo
+        // já existente no mesmo dedupe_key, devolve o crédito para evitar débito duplo.
+        if (usedCredit) {
+          const { data: profRaceNow } = await admin
+            .from("profiles")
+            .select("credits")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (profRaceNow) {
+            await admin
+              .from("profiles")
+              .update({ credits: profRaceNow.credits + 1 })
+              .eq("id", user.id)
+              .eq("credits", profRaceNow.credits);
+          }
+        }
         const { count: usedRace } = await admin
           .from("reading_consults")
           .select("id", { count: "exact", head: true })
@@ -261,15 +274,13 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    const summary = usedCredit
-      ? "1 crédito usado ao concluir a tiragem (consulta paga)."
-      : "Consulta gratuita ao concluir a tiragem (1ª consulta da conta).";
+    const summary = "1 crédito usado ao concluir a tiragem (consulta paga).";
     try {
       await admin.from("credit_ledger").insert({
         user_id: user.id,
-        credits_delta: usedCredit ? -1 : 0,
+        credits_delta: -1,
         balance_after: profAfter?.credits ?? 0,
-        event_type: usedCredit ? "consult_paid" : "consult_free",
+        event_type: "consult_paid",
         summary,
         ref_table: "reading_consults",
         ref_id: row.id,

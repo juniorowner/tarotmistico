@@ -73,7 +73,6 @@ const BoasVindasCreditos = () => {
     );
   }
 
-  const hasWelcomeFree = quotaState.data.free_remaining_today > 0;
   /** Mesmo browser onde já usou a leitura guest antes de criar conta — não misturar com “ainda não revelou”. */
   const guestFreeAlreadyUsedOnDevice = hasGuestOnceBeenConsumedLocally();
 
@@ -106,31 +105,6 @@ const BoasVindasCreditos = () => {
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
                 >
                   Nova leitura
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </>
-          ) : hasWelcomeFree ? (
-            <>
-              <p className="text-sm text-primary/90 font-body mb-3">Olá, {friendlyName}</p>
-              <h1 className="font-display text-3xl md:text-5xl text-gold-gradient leading-tight">
-                🔮 Sua leitura já pode ser revelada
-              </h1>
-
-              <p className="mt-6 text-muted-foreground font-body text-base md:text-lg leading-relaxed">
-                Você ganhou uma interpretação completa com IA gratuita.
-              </p>
-
-              <p className="mt-3 text-foreground/90 font-body text-base md:text-lg leading-relaxed">
-                Use agora e descubra o que as cartas têm a dizer.
-              </p>
-
-              <div className="mt-10 flex justify-center">
-                <Link
-                  to="/"
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
-                >
-                  Descobrir minha resposta
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

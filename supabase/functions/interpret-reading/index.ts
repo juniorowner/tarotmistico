@@ -4,8 +4,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "./safetyContent.ts";
 
-/** Alinhado a commit-reading-consult: 1 consulta grátis por conta (vitalícia). */
-const FREE_CONSULTS_PER_ACCOUNT = 1;
+/** Alinhado a commit-reading-consult: sem consulta grátis por conta logada. */
+const FREE_CONSULTS_PER_ACCOUNT = 0;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
