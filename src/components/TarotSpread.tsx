@@ -245,10 +245,6 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
     revealedRef.current = revealed;
   }, [revealed]);
 
-  useEffect(() => {
-    if (!allRevealed) setIaPrimaryActionInView(false);
-  }, [allRevealed]);
-
   /** Atalho «catálogo completo»: evita que uma leitura antiga em sessionStorage volte num refresh sem atalho. */
   useEffect(() => {
     if (ignorePersistedProgress && !initialReading) {
@@ -357,6 +353,10 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
     selectedSpread && firstUnrevealedIndex >= 0
       ? (selectedSpread.labels[firstUnrevealedIndex] ?? "").trim()
       : "";
+
+  useEffect(() => {
+    if (!allRevealed) setIaPrimaryActionInView(false);
+  }, [allRevealed]);
 
   /** Alinha GA com o backend: só após revelar todas as cartas (antes da IA / commit). */
   useEffect(() => {
