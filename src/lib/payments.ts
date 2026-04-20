@@ -28,6 +28,19 @@ export type MercadoPagoPaymentStatus = {
   status_detail?: string | null;
 };
 
+function normalizePaymentErrorMessage(messageRaw: string): string {
+  const msg = String(messageRaw || "").trim();
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes("payer") &&
+    (lower.includes("invalid") || lower.includes("is invalid")) &&
+    (lower.includes("mail") || lower.includes("email"))
+  ) {
+    return "O e-mail informado para o pagamento Pix é inválido. Revise o e-mail e tente novamente.";
+  }
+  return msg || "Não foi possível processar o pagamento.";
+}
+
 export async function createMercadoPagoCheckout(
   packageId: CreditPackageId
 ): Promise<MercadoPagoCheckoutPayload> {
@@ -110,7 +123,7 @@ export async function processMercadoPagoPayment(
     let msg = "Não foi possível processar o pagamento.";
     try {
       const j = JSON.parse(t) as { error?: string };
-      if (j.error) msg = j.error;
+      if (j.error) msg = normalizePaymentErrorMessage(j.error);
     } catch {
       /* ignore */
     }

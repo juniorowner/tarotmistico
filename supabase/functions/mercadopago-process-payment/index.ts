@@ -6,6 +6,35 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmail(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isValidEmail(value: string): boolean {
+  return SIMPLE_EMAIL_REGEX.test(normalizeEmail(value));
+}
+
+function translateMercadoPagoError(messageRaw: unknown): string {
+  const msg = String(messageRaw ?? "").trim();
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes("payer") &&
+    (lower.includes("invalid") || lower.includes("is invalid")) &&
+    lower.includes("mail")
+  ) {
+    return "O e-mail informado para o pagamento Pix é inválido. Revise o e-mail e tente novamente.";
+  }
+  if (
+    lower.includes("payer") &&
+    (lower.includes("invalid") || lower.includes("is invalid")) &&
+    lower.includes("email")
+  ) {
+    return "O e-mail informado para o pagamento Pix é inválido. Revise o e-mail e tente novamente.";
+  }
+  return msg || "Erro ao processar pagamento no Mercado Pago.";
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -93,11 +122,17 @@ serve(async (req) => {
       );
     }
 
-    const payerEmail = (user.email ?? "").trim();
-    if (!payerEmail) {
+    const sessionEmail = normalizeEmail(user.email);
+    const payloadPayer =
+      typeof payload.payer === "object" && payload.payer
+        ? (payload.payer as Record<string, unknown>)
+        : null;
+    const payloadEmail = normalizeEmail(payloadPayer?.email);
+    const payerEmail = isValidEmail(sessionEmail) ? sessionEmail : payloadEmail;
+    if (!isValidEmail(payerEmail)) {
       return new Response(
         JSON.stringify({
-          error: "A conta autenticada não possui e-mail válido para pagamento Pix.",
+          error: "Informe um e-mail válido para gerar o pagamento Pix.",
           code: "PAYER_EMAIL_MISSING",
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -130,7 +165,7 @@ serve(async (req) => {
 
     const mpData = await mpRes.json();
     if (!mpRes.ok) {
-      const msg = mpData?.message || mpData?.error || "Erro ao processar pagamento no Mercado Pago.";
+      const msg = translateMercadoPagoError(mpData?.message || mpData?.error);
       return new Response(JSON.stringify({ error: msg, details: mpData }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

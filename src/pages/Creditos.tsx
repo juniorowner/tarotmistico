@@ -97,12 +97,71 @@ const Creditos = () => {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [pixCountdownSec, setPixCountdownSec] = useState<number | null>(null);
   const [payerEmailInput, setPayerEmailInput] = useState("");
+  const [pendingPackageId, setPendingPackageId] = useState<CreditPackageId | null>(null);
+  const [retryingFromModal, setRetryingFromModal] = useState(false);
+  const [checkoutNeedsEmailFix, setCheckoutNeedsEmailFix] = useState(false);
 
   const normalizeEmail = (value: string): string => value.trim().toLowerCase();
   const isValidEmail = (value: string): boolean => SIMPLE_EMAIL_REGEX.test(normalizeEmail(value));
   const accountEmail = normalizeEmail(user?.email ?? "");
   const effectivePayerEmail = accountEmail || normalizeEmail(payerEmailInput);
-  const needsPayerEmailInput = !!user && !isValidEmail(accountEmail);
+  const resetCheckoutState = () => {
+    setCheckoutOrderId(null);
+    setCheckoutPaymentId(null);
+    setCheckoutStatus(null);
+    setCheckoutQrCode(null);
+    setCheckoutQrImage(null);
+    setCheckoutError(null);
+    setCheckoutNeedsEmailFix(false);
+  };
+
+  const processPixPayment = async (packageId: CreditPackageId, payerEmail: string) => {
+    const normalizedEmail = normalizeEmail(payerEmail);
+    sessionStorage.setItem("lastKnownUserEmail", normalizedEmail);
+
+    const checkout = await createMercadoPagoCheckout(packageId);
+    const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
+    if (!pkg) throw new Error("Pacote inválido.");
+    trackEvent("pix_payment_requested", {
+      package_id: packageId,
+      credits: pkg.credits,
+      amount_brl: pkg.amountCents / 100,
+    });
+    setCheckoutOrderId(checkout.orderId ?? null);
+    setCheckoutStatus(null);
+    setCheckoutQrCode(null);
+    setCheckoutQrImage(null);
+    setCheckoutError(null);
+    setCheckoutPaymentId(null);
+    const res = await processMercadoPagoPayment(
+      {
+        transaction_amount: pkg.amountCents / 100,
+        payment_method_id: "pix",
+        description: `${pkg.credits} créditos — Tarot Místico`,
+        payer: { email: normalizedEmail },
+      },
+      {
+        creditOrderId: checkout.orderId ?? undefined,
+      }
+    );
+    const paymentId = res.payment_id != null ? String(res.payment_id) : null;
+    if (!paymentId) throw new Error("Pagamento criado sem ID. Tente novamente.");
+    setCheckoutPaymentId(paymentId);
+    setCheckoutStatus(res.status ?? null);
+    setCheckoutQrCode(res.qr_code ?? null);
+    setCheckoutQrImage(res.qr_code_base64 ?? null);
+    setCheckoutNeedsEmailFix(false);
+    setCheckoutOpen(true);
+    if (String(res.status || "").toLowerCase() === "approved") {
+      trackEvent("pix_payment_approved", { package_id: packageId });
+      toast.success("Pagamento aprovado.");
+      void refreshAiQuota();
+      void refreshOrders();
+    } else {
+      trackEvent("pix_qr_generated", { package_id: packageId });
+      toast.message("Pagamento Pix gerado. Conclua com o QR Code abaixo.");
+    }
+  };
 
   const refreshLedger = useCallback(async () => {
     if (!user) {
@@ -189,61 +248,44 @@ const Creditos = () => {
       openAuthDialog("Inicie sessão para comprar créditos de interpretação por IA.");
       return;
     }
+    setPendingPackageId(packageId);
     if (!isValidEmail(effectivePayerEmail)) {
-      toast.error("Informe um e-mail válido para gerar o Pix.");
+      resetCheckoutState();
+      setCheckoutNeedsEmailFix(true);
+      setCheckoutError("Para continuar, corrija seu e-mail de pagamento neste modal.");
+      setCheckoutOpen(true);
       return;
     }
 
     setPaying(packageId);
     try {
-      sessionStorage.setItem("lastKnownUserEmail", effectivePayerEmail);
-
-      const checkout = await createMercadoPagoCheckout(packageId);
-      const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
-      if (!pkg) throw new Error("Pacote inválido.");
-      trackEvent("pix_payment_requested", {
-        package_id: packageId,
-        credits: pkg.credits,
-        amount_brl: pkg.amountCents / 100,
-      });
-      setCheckoutOrderId(checkout.orderId ?? null);
-      setCheckoutStatus(null);
-      setCheckoutQrCode(null);
-      setCheckoutQrImage(null);
-      setCheckoutError(null);
-      setCheckoutPaymentId(null);
-      const res = await processMercadoPagoPayment(
-        {
-          transaction_amount: pkg.amountCents / 100,
-          payment_method_id: "pix",
-          description: `${pkg.credits} créditos — Tarot Místico`,
-          payer: { email: effectivePayerEmail },
-        },
-        {
-          creditOrderId: checkout.orderId ?? undefined,
-        }
-      );
-      const paymentId = res.payment_id != null ? String(res.payment_id) : null;
-      if (!paymentId) throw new Error("Pagamento criado sem ID. Tente novamente.");
-      setCheckoutPaymentId(paymentId);
-      setCheckoutStatus(res.status ?? null);
-      setCheckoutQrCode(res.qr_code ?? null);
-      setCheckoutQrImage(res.qr_code_base64 ?? null);
-      setCheckoutOpen(true);
-      if (String(res.status || "").toLowerCase() === "approved") {
-        trackEvent("pix_payment_approved", { package_id: packageId });
-        toast.success("Pagamento aprovado.");
-        void refreshAiQuota();
-        void refreshOrders();
-      } else {
-        trackEvent("pix_qr_generated", { package_id: packageId });
-        toast.message("Pagamento Pix gerado. Conclua com o QR Code abaixo.");
-      }
+      await processPixPayment(packageId, effectivePayerEmail);
     } catch (e) {
       trackEvent("pix_payment_failed");
       toast.error(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
     } finally {
       setPaying(null);
+    }
+  };
+
+  const handleRetryPixWithModalEmail = async () => {
+    if (!pendingPackageId) {
+      toast.error("Escolha um pacote novamente para continuar.");
+      return;
+    }
+    if (!isValidEmail(effectivePayerEmail)) {
+      toast.error("Informe um e-mail válido para gerar o Pix.");
+      return;
+    }
+    setRetryingFromModal(true);
+    try {
+      await processPixPayment(pendingPackageId, effectivePayerEmail);
+    } catch (e) {
+      setCheckoutNeedsEmailFix(true);
+      setCheckoutError(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar pagamento Pix.");
+    } finally {
+      setRetryingFromModal(false);
     }
   };
 
@@ -473,21 +515,6 @@ const Creditos = () => {
             </div>
           )}
 
-          {needsPayerEmailInput && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
-              <p className="text-sm font-body text-amber-800">
-                Seu e-mail de login não está disponível. Informe um e-mail válido para gerar o Pix.
-              </p>
-              <input
-                type="email"
-                value={payerEmailInput}
-                onChange={(e) => setPayerEmailInput(e.target.value)}
-                placeholder="seu@email.com"
-                className="w-full rounded-lg border border-amber-500/40 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60"
-              />
-            </div>
-          )}
-
           <div className="grid gap-4 md:grid-cols-3">
             {CREDIT_PACKAGES.map((pkg) => (
               <motion.div
@@ -638,12 +665,7 @@ const Creditos = () => {
         onOpenChange={(open) => {
           setCheckoutOpen(open);
           if (!open) {
-            setCheckoutOrderId(null);
-            setCheckoutPaymentId(null);
-            setCheckoutStatus(null);
-            setCheckoutQrCode(null);
-            setCheckoutQrImage(null);
-            setCheckoutError(null);
+            resetCheckoutState();
           }
         }}
       >
@@ -683,35 +705,65 @@ const Creditos = () => {
             )}
           </DialogHeader>
           <div className="max-h-[calc(88vh-88px)] space-y-3 overflow-y-auto px-4 py-4">
-            <div className="rounded-md border border-border bg-background/60 p-4">
-              <p className="mb-3 text-sm text-muted-foreground">
-                {checkoutStatus
-                  ? `Status atual: ${translatePaymentStatus(checkoutStatus)}`
-                  : "Aguardando status do pagamento..."}
-              </p>
-              {checkoutQrImage ? (
-                <img
-                  src={checkoutQrImage.startsWith("data:") ? checkoutQrImage : `data:image/png;base64,${checkoutQrImage}`}
-                  alt="QR Code Pix"
-                  className="mx-auto h-56 w-56 rounded-md border border-border/70 bg-white p-2"
+            {checkoutNeedsEmailFix && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                <p className="text-sm font-body text-amber-900">
+                  Para gerar o Pix, informe um e-mail válido para pagamento.
+                </p>
+                <input
+                  type="email"
+                  value={payerEmailInput}
+                  onChange={(e) => setPayerEmailInput(e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full rounded-lg border border-amber-500/40 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60"
                 />
-              ) : (
-                <p className="text-sm text-muted-foreground">QR Code indisponível no momento.</p>
-              )}
-              {checkoutQrCode ? (
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    Copia e cola Pix:
-                  </p>
-                  <div className="rounded border border-border/70 bg-background p-2 text-xs break-all font-mono">
-                    {checkoutQrCode}
+                <Button
+                  type="button"
+                  className="w-full font-display uppercase tracking-wider"
+                  disabled={retryingFromModal}
+                  onClick={() => void handleRetryPixWithModalEmail()}
+                >
+                  {retryingFromModal ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" /> A gerar Pix…
+                    </>
+                  ) : (
+                    "Gerar Pix com este e-mail"
+                  )}
+                </Button>
+              </div>
+            )}
+            {(!checkoutNeedsEmailFix || !!checkoutQrCode || !!checkoutPaymentId) && (
+              <div className="rounded-md border border-border bg-background/60 p-4">
+                <p className="mb-3 text-sm text-muted-foreground">
+                  {checkoutStatus
+                    ? `Status atual: ${translatePaymentStatus(checkoutStatus)}`
+                    : "Aguardando status do pagamento..."}
+                </p>
+                {checkoutQrImage ? (
+                  <img
+                    src={checkoutQrImage.startsWith("data:") ? checkoutQrImage : `data:image/png;base64,${checkoutQrImage}`}
+                    alt="QR Code Pix"
+                    className="mx-auto h-56 w-56 rounded-md border border-border/70 bg-white p-2"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">QR Code indisponível no momento.</p>
+                )}
+                {checkoutQrCode ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Copia e cola Pix:
+                    </p>
+                    <div className="rounded border border-border/70 bg-background p-2 text-xs break-all font-mono">
+                      {checkoutQrCode}
+                    </div>
+                    <Button type="button" variant="secondary" onClick={() => void handleCopyPixCode()}>
+                      Copiar código Pix
+                    </Button>
                   </div>
-                  <Button type="button" variant="secondary" onClick={() => void handleCopyPixCode()}>
-                    Copiar código Pix
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            )}
             {checkoutError ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 {checkoutError}
