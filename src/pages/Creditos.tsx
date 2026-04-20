@@ -692,7 +692,7 @@ const Creditos = () => {
           }
         }}
       >
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[88vh] p-0 overflow-hidden border-border bg-card">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[88vh] p-0 border-border bg-card flex flex-col overflow-hidden">
           <DialogHeader className="p-4 pb-2 border-b border-border/70">
             <DialogTitle>Pagamento seguro</DialogTitle>
             <DialogDescription>
@@ -727,7 +727,7 @@ const Creditos = () => {
               </div>
             )}
           </DialogHeader>
-          <div className="max-h-[calc(88vh-88px)] space-y-3 overflow-y-auto px-4 py-4">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 pb-6">
             {checkoutNeedsEmailFix && (
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
                 <p className="text-sm font-body text-amber-900">
