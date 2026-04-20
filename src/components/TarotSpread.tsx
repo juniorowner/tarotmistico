@@ -633,7 +633,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
               />
             )}
 
-            {allRevealed && (
+            {allRevealed && aiInterpretationReady && (
               <div className="flex flex-wrap justify-center gap-4 mt-8">
                 <motion.button
                   initial={{ opacity: 0 }}
