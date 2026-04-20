@@ -172,7 +172,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error:
-            "✨ Há mais nessa leitura...\n\nDesbloqueie a interpretação completa e descubra todos os detalhes.",
+            "Veja agora a interpretação completa da sua leitura.\n\nPara continuar, escolha um pacote e desbloqueie com créditos.",
           code: "QUOTA_EXCEEDED",
           free_per_account: FREE_CONSULTS_PER_ACCOUNT_LIFETIME,
           consults_completed: usedBefore ?? 0,

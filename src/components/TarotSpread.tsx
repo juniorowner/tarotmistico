@@ -328,7 +328,7 @@ const TarotSpread = ({ initialReading = null }: TarotSpreadProps) => {
           trackEvent("consultation_commit_quota_exceeded");
           setConsultCommitError(
             e.message ||
-              "✨ Há mais nessa leitura...\n\nDesbloqueie a interpretação completa e descubra todos os detalhes."
+              "Veja agora a interpretação completa da sua leitura.\n\nPara continuar, escolha um pacote e desbloqueie com créditos."
           );
         } else {
           trackEvent("consultation_commit_failed");

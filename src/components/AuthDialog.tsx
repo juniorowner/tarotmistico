@@ -53,6 +53,14 @@ function formatAuthError(message: string): string {
   ) {
     return "Não foi possível entrar: confira o e-mail e a senha. Se você acabou de criar a conta, abra o link de confirmação enviado por e-mail e tente novamente.";
   }
+  if (
+    lower.includes("user already registered") ||
+    lower.includes("user already exists") ||
+    lower.includes("email already registered") ||
+    lower.includes("already registered")
+  ) {
+    return "Este e-mail já está cadastrado. Use «Entrar» com sua senha ou clique em «Esqueci minha senha» para recuperar o acesso.";
+  }
   return message;
 }
 
