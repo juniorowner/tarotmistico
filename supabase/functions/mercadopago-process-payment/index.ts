@@ -93,8 +93,21 @@ serve(async (req) => {
       );
     }
 
+    const payerEmail = (user.email ?? "").trim();
+    if (!payerEmail) {
+      return new Response(
+        JSON.stringify({
+          error: "A conta autenticada não possui e-mail válido para pagamento Pix.",
+          code: "PAYER_EMAIL_MISSING",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { credit_order_id: _drop, ...rest } = payload;
     const mpBody: Record<string, unknown> = { ...rest };
+    const rawPayer = typeof mpBody.payer === "object" && mpBody.payer ? (mpBody.payer as Record<string, unknown>) : {};
+    mpBody.payer = { ...rawPayer, email: payerEmail };
     mpBody.external_reference = creditOrderId;
     // Garante atualização assíncrona de status/créditos mesmo se o utilizador fechar o modal.
     if (webhookSecret) {

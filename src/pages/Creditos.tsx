@@ -37,6 +37,7 @@ function translatePaymentStatus(statusRaw: string): string {
 }
 
 const PIX_MODAL_VALIDITY_SECONDS = 5 * 60;
+const SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function formatCountdownMmSs(totalSec: number): string {
   const s = Math.max(0, totalSec);
@@ -95,6 +96,13 @@ const Creditos = () => {
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [pixCountdownSec, setPixCountdownSec] = useState<number | null>(null);
+  const [payerEmailInput, setPayerEmailInput] = useState("");
+
+  const normalizeEmail = (value: string): string => value.trim().toLowerCase();
+  const isValidEmail = (value: string): boolean => SIMPLE_EMAIL_REGEX.test(normalizeEmail(value));
+  const accountEmail = normalizeEmail(user?.email ?? "");
+  const effectivePayerEmail = accountEmail || normalizeEmail(payerEmailInput);
+  const needsPayerEmailInput = !!user && !isValidEmail(accountEmail);
 
   const refreshLedger = useCallback(async () => {
     if (!user) {
@@ -181,8 +189,15 @@ const Creditos = () => {
       openAuthDialog("Inicie sessão para comprar créditos de interpretação por IA.");
       return;
     }
+    if (!isValidEmail(effectivePayerEmail)) {
+      toast.error("Informe um e-mail válido para gerar o Pix.");
+      return;
+    }
+
     setPaying(packageId);
     try {
+      sessionStorage.setItem("lastKnownUserEmail", effectivePayerEmail);
+
       const checkout = await createMercadoPagoCheckout(packageId);
       const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
       if (!pkg) throw new Error("Pacote inválido.");
@@ -202,7 +217,7 @@ const Creditos = () => {
           transaction_amount: pkg.amountCents / 100,
           payment_method_id: "pix",
           description: `${pkg.credits} créditos — Tarot Místico`,
-          payer: user.email ? { email: user.email } : {},
+          payer: { email: effectivePayerEmail },
         },
         {
           creditOrderId: checkout.orderId ?? undefined,
@@ -455,6 +470,21 @@ const Creditos = () => {
                   </>
                 )}
               </Button>
+            </div>
+          )}
+
+          {needsPayerEmailInput && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
+              <p className="text-sm font-body text-amber-800">
+                Seu e-mail de login não está disponível. Informe um e-mail válido para gerar o Pix.
+              </p>
+              <input
+                type="email"
+                value={payerEmailInput}
+                onChange={(e) => setPayerEmailInput(e.target.value)}
+                placeholder="seu@email.com"
+                className="w-full rounded-lg border border-amber-500/40 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60"
+              />
             </div>
           )}
 
