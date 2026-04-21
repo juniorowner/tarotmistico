@@ -103,13 +103,13 @@ const BoasVindasCreditos = () => {
               Agora você pode continuar explorando novas respostas.
             </p>
 
-            <div className="mt-10 flex justify-center">
+            <div className="mt-10 flex w-full justify-center px-2">
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
+                className="inline-flex w-full max-w-md items-center justify-center gap-2 rounded-lg bg-primary px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-primary-foreground glow-gold transition-all hover:brightness-110"
               >
                 Nova leitura
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
             </div>
           </>
@@ -127,13 +127,13 @@ const BoasVindasCreditos = () => {
               Agora você pode continuar e aprofundar sua resposta.
             </p>
 
-            <div className="mt-10 flex justify-center">
+            <div className="mt-10 flex w-full justify-center px-2">
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 font-display text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-foreground transition-all hover:brightness-110"
+                className="inline-flex w-full max-w-md items-center justify-center gap-2 rounded-lg bg-primary px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-primary-foreground glow-gold transition-all hover:brightness-110"
               >
                 {CTA_CONTINUE_READING}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
             </div>
           </>
