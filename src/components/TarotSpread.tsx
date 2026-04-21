@@ -394,6 +394,28 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
   /** Alinha GA com o backend: só após revelar todas as cartas (antes da IA / commit). */
   useEffect(() => {
     if (!allRevealed || !hasStarted || !selectedSpread || cards.length === 0 || !readingDedupeKey) return;
+    pushVisitorEvent("reading_cards_only_completed", {
+      spread_id: selectedSpread.id,
+      spread_name: selectedSpread.name,
+      card_count: cards.length,
+      consultation_type: user ? "account" : "guest",
+      reading_dedupe_key: readingDedupeKey,
+      cards_snapshot: cards.map((card, idx) => ({
+        index: idx + 1,
+        position: selectedSpread.labels[idx] ?? `Carta ${idx + 1}`,
+        card_id: card.id,
+        name: card.name,
+        reversed: card.isReversed,
+        arcana: card.arcana,
+        suit: card.suit ?? null,
+      })),
+    });
+    trackEvent("reading_cards_only_completed", {
+      spread_id: selectedSpread.id,
+      spread_name: selectedSpread.name,
+      card_count: cards.length,
+      is_guest: !user,
+    });
     trackEvent("reading_all_cards_revealed", {
       spread_id: selectedSpread.id,
       spread_name: selectedSpread.name,
