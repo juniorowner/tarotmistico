@@ -328,6 +328,7 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
     setAiInterpretationReady(false);
     postRevealScrollDoneRef.current = false;
     clearPersistedReadingProgress();
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     if (opts?.announceReplace) {
       toast.message("Você começou uma nova leitura. A anterior foi substituída.");
     }
