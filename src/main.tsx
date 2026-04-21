@@ -1,9 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
-import { initGoogleAnalytics } from "./lib/googleAnalytics";
 import "./index.css";
-
-initGoogleAnalytics();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
