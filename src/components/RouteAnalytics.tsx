@@ -15,6 +15,12 @@ export function RouteAnalytics() {
     if (location.pathname === "/creditos") {
       trackEvent("creditos_page_view");
     }
+    if (location.pathname === "/diario") {
+      trackEvent("diario_page_view");
+    }
+    if (location.pathname === "/bem-vindo-creditos") {
+      trackEvent("bem_vindo_creditos_page_view");
+    }
   }, [location]);
 
   return null;

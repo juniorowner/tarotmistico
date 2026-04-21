@@ -69,6 +69,7 @@ export function UserMenu() {
           to="/creditos"
           className={SITE_NAV_PILL_CLASSNAME}
           title="Pacotes e saldo para novas leituras completas"
+          onClick={() => trackEvent("nav_creditos_click", { source: "nav_pill" })}
         >
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
           <span className="whitespace-nowrap">Créditos</span>
@@ -141,6 +142,7 @@ export function UserMenu() {
               <Link
                 to="/creditos"
                 className="block text-center text-[11px] text-muted-foreground font-body underline-offset-2 hover:text-primary hover:underline"
+                onClick={() => trackEvent("nav_creditos_click", { source: "account_popover" })}
               >
                 Planos e leituras completas
               </Link>

@@ -153,6 +153,7 @@ const Index = () => {
           <Link
             to="/diario"
             className={SITE_NAV_PILL_CLASSNAME}
+            onClick={() => trackEvent("nav_diary_click", { source: "site_nav_bar" })}
           >
             <BookOpen className="h-3.5 w-3.5 shrink-0" />
             <span className="whitespace-nowrap">Diário</span>

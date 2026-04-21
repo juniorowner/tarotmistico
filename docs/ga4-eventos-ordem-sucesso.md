@@ -150,3 +150,16 @@ Fluxo ideal de ponta a ponta:
 6. Taxa de erro operacional:
    - `(consultation_commit_failed + ai_interpretation_failed + guest_interpretation_failed) / ai_interpretation_requested`
 
+## 9) Navegação global (rotas e header)
+
+Em qualquer mudança de rota continua a haver `page_view` (path + title). Eventos custom extra:
+
+| Evento | Quando |
+|--------|--------|
+| `diario_page_view` | Entrada em `/diario` |
+| `bem_vindo_creditos_page_view` | Entrada em `/bem-vindo-creditos` |
+| `nav_diary_click` | Clique no pill «Diário» na barra (`source`: `site_nav_bar`) |
+| `nav_creditos_click` | Clique para créditos (`source`: `nav_pill` ou `account_popover`) |
+
+O evento `creditos_page_view` mantém-se só em `/creditos` (igual que antes).
+
