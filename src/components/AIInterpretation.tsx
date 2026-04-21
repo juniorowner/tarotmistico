@@ -17,6 +17,7 @@ import {
   requestGuestInterpretationOnce,
 } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
+import { pushVisitorEvent } from "@/lib/visitorTracking";
 import { CTA_DISCOVER_AFTER_ALL_REVEALED, CTA_NEW_READING } from "@/lib/ctaCopy";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
@@ -172,9 +173,21 @@ const AIInterpretation = ({
     }
     trackEvent("ai_interpretation_requested", {
       spread_id: spreadId,
+      spread_name: spreadName,
+      card_count: cards.length,
       has_question: question.trim().length > 0,
       replace_existing: opts?.replaceExisting === true,
       guest_mode: guestMode,
+      consultation_type: guestMode ? "guest_once" : "account",
+    });
+    pushVisitorEvent("ai_interpretation_requested", {
+      spread_id: spreadId,
+      spread_name: spreadName,
+      card_count: cards.length,
+      has_question: question.trim().length > 0,
+      replace_existing: opts?.replaceExisting === true,
+      consultation_type: guestMode ? "guest_once" : "account",
+      is_authenticated: !!user,
     });
     setIsLoading(true);
     setError(null);

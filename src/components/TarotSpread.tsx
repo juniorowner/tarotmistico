@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { pushVisitorEvent } from "@/lib/visitorTracking";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
@@ -306,6 +307,26 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
   }, [user, selectedSpread, hasStarted, refreshAiQuota]);
 
   const revealCard = (index: number) => {
+    if (selectedSpread && !revealed[index]) {
+      pushVisitorEvent("reading_card_revealed", {
+        spread_id: selectedSpread.id,
+        spread_name: selectedSpread.name,
+        card_index: index + 1,
+        card_position: selectedSpread.labels[index] ?? `Carta ${index + 1}`,
+        revealed_count: revealedCount + 1,
+        card_count: cards.length,
+        consultation_type: user ? "account" : "guest",
+      });
+      trackEvent("reading_card_revealed", {
+        spread_id: selectedSpread.id,
+        spread_name: selectedSpread.name,
+        card_index: index + 1,
+        card_position: selectedSpread.labels[index] ?? `Carta ${index + 1}`,
+        revealed_count: revealedCount + 1,
+        card_count: cards.length,
+        is_guest: !user,
+      });
+    }
     setRevealed((prev) => {
       const next = [...prev];
       next[index] = true;
@@ -400,6 +421,22 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
   }, [allRevealed, hasStarted, isNarrow]);
 
   const scrollToAiInterpretation = () => {
+    if (selectedSpread) {
+      pushVisitorEvent("reading_view_ai_cta_clicked", {
+        spread_id: selectedSpread.id,
+        spread_name: selectedSpread.name,
+        card_count: cards.length,
+        consultation_type: user ? "account" : "guest",
+        ai_ready: aiInterpretationReady,
+      });
+      trackEvent("reading_view_ai_cta_clicked", {
+        spread_id: selectedSpread.id,
+        spread_name: selectedSpread.name,
+        card_count: cards.length,
+        is_guest: !user,
+        ai_ready: aiInterpretationReady,
+      });
+    }
     document.getElementById("bloco-interpretacao-ia")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
