@@ -38,6 +38,8 @@ interface AIInterpretationProps {
   onInterpretationReady?: () => void;
   /** Mobile: quando o bloco principal (Comprar créditos / DESCOBRIR / Desbloquear / loading) entra no ecrã. */
   onPrimaryActionVisibilityChange?: (visible: boolean) => void;
+  /** Mobile: quando o utilizador faz scroll para além do fim do texto da interpretação (esconder CTA fixo). */
+  onInterpretationPastEndChange?: (pastEnd: boolean) => void;
   /** Sempre no final desta secção, após DESCOBRIR / Desbloquear (e após o texto da IA, se existir). */
   onNovaLeitura: () => void;
   /** Conta: após a interpretação, antes de «Nova leitura». */
@@ -61,6 +63,7 @@ const AIInterpretation = ({
   onEnsureConsultation,
   onInterpretationReady,
   onPrimaryActionVisibilityChange,
+  onInterpretationPastEndChange,
   onNovaLeitura,
   onSaveDiary,
 }: AIInterpretationProps) => {
@@ -74,6 +77,7 @@ const AIInterpretation = ({
   const [question, setQuestion] = useState(initialQuestion);
   const [quotaHint, setQuotaHint] = useState<string | null>(null);
   const primaryActionBlockRef = useRef<HTMLDivElement | null>(null);
+  const interpretationEndSentinelRef = useRef<HTMLDivElement | null>(null);
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   useEffect(() => {
@@ -99,6 +103,38 @@ const AIInterpretation = ({
       onPrimaryActionVisibilityChange(false);
     };
   }, [onPrimaryActionVisibilityChange, interpretation, isLoading]);
+
+  /** Mobile TarotSpread: esconder CTA fixo depois de o utilizador passar do fim do texto da IA. */
+  useEffect(() => {
+    if (!onInterpretationPastEndChange || !interpretation) {
+      onInterpretationPastEndChange?.(false);
+      return;
+    }
+    const el = interpretationEndSentinelRef.current;
+    if (!el) {
+      onInterpretationPastEndChange(false);
+      return;
+    }
+    const bottomReservePx = 96;
+    const check = () => {
+      const rect = el.getBoundingClientRect();
+      const past = rect.bottom < window.innerHeight - bottomReservePx;
+      if (past) onInterpretationPastEndChange(true);
+    };
+    check();
+    const raf = requestAnimationFrame(() => check());
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    const ro = new ResizeObserver(() => check());
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+      ro.disconnect();
+      onInterpretationPastEndChange(false);
+    };
+  }, [interpretation, onInterpretationPastEndChange]);
 
   useEffect(() => {
     onQuestionChange?.(question);
@@ -482,6 +518,11 @@ const AIInterpretation = ({
               <div className="font-body text-foreground/85 text-lg leading-relaxed whitespace-pre-line">
                 {interpretation}
               </div>
+              <div
+                ref={interpretationEndSentinelRef}
+                className="h-px w-full shrink-0 scroll-mt-0"
+                aria-hidden
+              />
             </motion.div>
             {guestMode && (
               <motion.div

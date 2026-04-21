@@ -234,6 +234,11 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
   const handleIaPrimaryVisibility = useCallback((visible: boolean) => {
     setIaPrimaryActionInView(visible);
   }, []);
+  /** Mobile: após haver texto da IA, some o CTA fixo quando o scroll passa do fim da mensagem. */
+  const [iaInterpretationPastEnd, setIaInterpretationPastEnd] = useState(false);
+  const handleInterpretationPastEnd = useCallback((pastEnd: boolean) => {
+    setIaInterpretationPastEnd(pastEnd);
+  }, []);
   const firstCardAnchorRef = useRef<HTMLDivElement | null>(null);
   const postRevealScrollDoneRef = useRef(false);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -356,6 +361,14 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
   useEffect(() => {
     if (!allRevealed) setIaPrimaryActionInView(false);
   }, [allRevealed]);
+
+  useEffect(() => {
+    if (!allRevealed || !aiInterpretationReady) setIaInterpretationPastEnd(false);
+  }, [allRevealed, aiInterpretationReady]);
+
+  useEffect(() => {
+    setIaInterpretationPastEnd(false);
+  }, [readingDedupeKey]);
 
   /** Alinha GA com o backend: só após revelar todas as cartas (antes da IA / commit). */
   useEffect(() => {
@@ -811,6 +824,7 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
                 onEnsureConsultation={ensureConsultation}
                 onInterpretationReady={() => setAiInterpretationReady(true)}
                 onPrimaryActionVisibilityChange={isNarrow ? handleIaPrimaryVisibility : undefined}
+                onInterpretationPastEndChange={isNarrow ? handleInterpretationPastEnd : undefined}
                 onNovaLeitura={() => {
                   trackEvent("new_reading_clicked", {
                     after_interpretation: aiInterpretationReady,
@@ -829,7 +843,10 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
         )}
       </div>
 
-      {isNarrow && hasStarted && (!allRevealed || !iaPrimaryActionInView) && (
+      {isNarrow &&
+        hasStarted &&
+        (!allRevealed || !iaPrimaryActionInView) &&
+        !iaInterpretationPastEnd && (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
           <div className="pointer-events-auto mx-auto max-w-lg">
             {!allRevealed ? (
