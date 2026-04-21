@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { SITE_NAV_PILL_CLASSNAME } from "@/components/SiteNavBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,19 +31,17 @@ export function UserMenu() {
 
   if (!user) {
     return (
-      <Button
+      <button
         type="button"
-        variant="outline"
-        size="sm"
         onClick={() => {
           trackEvent("auth_dialog_open_clicked", { source: "user_menu" });
           openAuthDialog();
         }}
-        className="font-display text-xs tracking-wider uppercase gap-1.5 border-primary/40"
+        className={SITE_NAV_PILL_CLASSNAME}
       >
-        <LogIn className="h-3.5 w-3.5" />
-        Entrar
-      </Button>
+        <LogIn className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span className="whitespace-nowrap">Entrar</span>
+      </button>
     );
   }
 
@@ -68,7 +67,7 @@ export function UserMenu() {
       {showCreditsNav ? (
         <Link
           to="/creditos"
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-card/70 px-2 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50 sm:gap-1.5 sm:px-2.5"
+          className={SITE_NAV_PILL_CLASSNAME}
           title="Pacotes e saldo para novas leituras completas"
         >
           <Sparkles className="h-3.5 w-3.5 shrink-0" />

@@ -1,6 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+/** Estilo comum aos atalhos da barra (Diário, Entrar, Créditos, etc.). */
+export const SITE_NAV_PILL_CLASSNAME =
+  "inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-card/70 px-2 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50 sm:gap-1.5 sm:px-2.5";
+
 type SiteNavBarProps = {
   children: ReactNode;
   className?: string;

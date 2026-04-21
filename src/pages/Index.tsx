@@ -4,7 +4,7 @@ import { BookOpen } from "lucide-react";
 import Hero from "@/components/Hero";
 import TarotSpread, { type TarotInitialReading } from "@/components/TarotSpread";
 import { UserMenu } from "@/components/UserMenu";
-import { SiteNavBar } from "@/components/SiteNavBar";
+import { SiteNavBar, SITE_NAV_PILL_CLASSNAME } from "@/components/SiteNavBar";
 import SEO from "@/components/SEO";
 import { ConversionChooseSpread } from "@/components/conversion/ConversionChooseSpread";
 import { ConversionLoading } from "@/components/conversion/ConversionLoading";
@@ -152,7 +152,7 @@ const Index = () => {
         <SiteNavBar>
           <Link
             to="/diario"
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-primary/35 bg-card/70 px-2 py-1.5 font-display text-[11px] tracking-wider uppercase text-primary transition-colors hover:bg-primary/10 hover:border-primary/50 sm:gap-1.5 sm:px-2.5"
+            className={SITE_NAV_PILL_CLASSNAME}
           >
             <BookOpen className="h-3.5 w-3.5 shrink-0" />
             <span className="whitespace-nowrap">Diário</span>
