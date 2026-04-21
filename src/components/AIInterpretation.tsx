@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, Save } from "lucide-react";
 import { toast } from "sonner";
 import type { DealtTarotCard } from "@/data/tarotCards";
 import { requestAIInterpretation } from "@/lib/ai";
@@ -17,7 +17,7 @@ import {
   requestGuestInterpretationOnce,
 } from "@/lib/guestOnce";
 import { trackEvent } from "@/lib/analytics";
-import { CTA_DISCOVER_AFTER_ALL_REVEALED } from "@/lib/ctaCopy";
+import { CTA_DISCOVER_AFTER_ALL_REVEALED, CTA_NEW_READING } from "@/lib/ctaCopy";
 import { unsafeUserContentMessage, userQuestionFailsSafetyPolicy } from "@/lib/safetyContent";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -38,6 +38,10 @@ interface AIInterpretationProps {
   onInterpretationReady?: () => void;
   /** Mobile: quando o bloco principal (Comprar créditos / DESCOBRIR / Desbloquear / loading) entra no ecrã. */
   onPrimaryActionVisibilityChange?: (visible: boolean) => void;
+  /** Sempre no final desta secção, após DESCOBRIR / Desbloquear (e após o texto da IA, se existir). */
+  onNovaLeitura: () => void;
+  /** Conta: após a interpretação, antes de «Nova leitura». */
+  onSaveDiary?: () => void;
 }
 
 type ErrorFooter = "quota" | "included" | null;
@@ -57,6 +61,8 @@ const AIInterpretation = ({
   onEnsureConsultation,
   onInterpretationReady,
   onPrimaryActionVisibilityChange,
+  onNovaLeitura,
+  onSaveDiary,
 }: AIInterpretationProps) => {
   const { user, session, isLoading: authLoading, openAuthDialog, refreshAiQuota, aiQuota } = useAuth();
   const loggedInNoCredits = !guestMode && !!user && (aiQuota?.credits_balance ?? 0) <= 0;
@@ -501,6 +507,36 @@ const AIInterpretation = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {!guestMode && user && interpretation && onSaveDiary && (
+        <div className="mt-8 flex justify-center">
+          <motion.button
+            type="button"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onSaveDiary}
+            className="flex items-center gap-2 rounded-lg bg-primary px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-primary-foreground glow-gold transition-all hover:brightness-110"
+          >
+            <Save className="h-4 w-4" />
+            Salvar no Diário
+          </motion.button>
+        </div>
+      )}
+
+      <div className="mt-10 w-full max-w-2xl mx-auto border-t border-border/60 pt-8">
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          onClick={onNovaLeitura}
+          className="w-full font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
+        >
+          {CTA_NEW_READING}
+        </motion.button>
+      </div>
     </motion.div>
   );
 };

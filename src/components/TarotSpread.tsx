@@ -9,7 +9,6 @@ import { commitReadingConsult } from "@/lib/readingConsult";
 import { trackEvent } from "@/lib/analytics";
 import {
   CTA_DISCOVER_AFTER_ALL_REVEALED,
-  CTA_NEW_READING,
   CTA_VIEW_AI_READING,
 } from "@/lib/ctaCopy";
 import {
@@ -38,7 +37,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Save } from "lucide-react";
 import TarotCardComponent from "./TarotCard";
 import SpreadSelector from "./SpreadSelector";
 import AIInterpretation from "./AIInterpretation";
@@ -797,26 +795,6 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
               </DialogContent>
             </Dialog>
 
-            {allRevealed && selectedSpread && !(user && aiInterpretationReady) && (
-              <div className="mb-10 flex max-w-lg justify-center px-2 sm:mx-auto">
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: 0.05 }}
-                  onClick={() => {
-                    trackEvent("new_reading_clicked", {
-                      after_interpretation: aiInterpretationReady,
-                    });
-                    resetAll({ announceReplace: true });
-                  }}
-                  className="w-full max-w-md font-display tracking-[0.12em] uppercase text-sm px-6 py-3.5 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-all"
-                >
-                  {CTA_NEW_READING}
-                </motion.button>
-              </div>
-            )}
-
             {allRevealed && selectedSpread && (
               <AIInterpretation
                 spreadId={selectedSpread.id}
@@ -832,43 +810,19 @@ const TarotSpread = ({ initialReading = null, ignorePersistedProgress = false }:
                 onEnsureConsultation={ensureConsultation}
                 onInterpretationReady={() => setAiInterpretationReady(true)}
                 onPrimaryActionVisibilityChange={isNarrow ? handleIaPrimaryVisibility : undefined}
+                onNovaLeitura={() => {
+                  trackEvent("new_reading_clicked", {
+                    after_interpretation: aiInterpretationReady,
+                  });
+                  resetAll({ announceReplace: true });
+                }}
+                onSaveDiary={saveReading}
                 onGuestConsumed={() => {
                   trackEvent("guest_first_reading_completed");
                   const [title, ...rest] = GUEST_DEVICE_LIMIT_AFTER.split(/\n+/).filter(Boolean);
                   toast.message(title, { description: rest.join(" ") || undefined });
                 }}
               />
-            )}
-
-            {allRevealed && selectedSpread && user && aiInterpretationReady && (
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={saveReading}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-primary-foreground glow-gold transition-all hover:brightness-110"
-                >
-                  <Save className="h-4 w-4" />
-                  Salvar no Diário
-                </motion.button>
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    trackEvent("new_reading_clicked", {
-                      after_interpretation: true,
-                    });
-                    resetAll({ announceReplace: true });
-                  }}
-                  className="order-last rounded-lg border border-border px-8 py-4 font-display text-sm uppercase tracking-[0.15em] text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
-                >
-                  {CTA_NEW_READING}
-                </motion.button>
-              </div>
             )}
           </>
         )}
